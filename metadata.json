@@ -1,0 +1,6 @@
+{
+  "name": "DENON COSMETICS",
+  "description": "Pakistan's Premier Luxury Skincare & Beauty E-Commerce Store with AI Skin Consultation & Direct COD Checkout.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
