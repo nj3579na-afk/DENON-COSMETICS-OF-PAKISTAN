@@ -59,7 +59,7 @@ export interface AuditLog {
   timestamp: string;
   adminUser: string;
   action: string;
-  category: 'Security' | 'Products' | 'Orders' | 'Settings' | 'Content' | 'AI';
+  category: 'Security' | 'Products' | 'Categories' | 'Orders' | 'Settings' | 'Content' | 'AI';
   ipAddress: string;
   details: string;
 }

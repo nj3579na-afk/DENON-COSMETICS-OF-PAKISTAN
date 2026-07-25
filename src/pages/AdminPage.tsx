@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AdminSettingsModule } from '../components/AdminSettingsModule';
+import { ImageUploader } from '../components/ImageUploader';
 import {
   Lock,
   ShieldCheck,
@@ -172,9 +173,10 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [pIsNewArrival, setPIsNewArrival] = useState(false);
 
   // Category Form State
+  const [editingCategory, setEditingCategory] = useState<CategoryItem | null>(null);
   const [catName, setCatName] = useState<CategoryType>('Serum');
   const [catDesc, setCatDesc] = useState('');
-  const [catImage, setCatImage] = useState('https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&q=80&w=400');
+  const [catImage, setCatImage] = useState('');
 
   // Blog Form State
   const [blogTitle, setBlogTitle] = useState('');
@@ -513,21 +515,84 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     saveCustomers(updated);
   };
 
-  // Add Category
+  // Category Actions & Handlers
+  const handleEditCategoryClick = (cat: CategoryItem) => {
+    setEditingCategory(cat);
+    setCatName(cat.name as CategoryType);
+    setCatDesc(cat.description || '');
+    setCatImage(cat.image || '');
+    setShowAddCategoryModal(true);
+  };
+
+  const handleCreateCategoryClick = () => {
+    setEditingCategory(null);
+    setCatName('Serum');
+    setCatDesc('');
+    setCatImage('');
+    setShowAddCategoryModal(true);
+  };
+
+  const handleDeleteCategory = (id: string, name: string) => {
+    if (confirm(`Are you sure you want to delete category "${name}"?`)) {
+      const updated = categories.filter((c) => c.id !== id);
+      setCategories(updated);
+      saveCategories(updated);
+      addAuditLog({
+        adminUser: `${selectedRole}`,
+        action: 'Deleted Category',
+        category: 'Categories',
+        ipAddress: '182.185.120.45',
+        details: `Deleted category "${name}"`,
+      });
+    }
+  };
+
   const handleAddCategory = (e: React.FormEvent) => {
     e.preventDefault();
-    const newCat: CategoryItem = {
-      id: `cat-${Date.now()}`,
-      name: catName,
-      description: catDesc || 'Premium beauty category by Denon Cosmetics.',
-      image: catImage,
-      productCount: 0,
-      isActive: true,
-      sortOrder: categories.length + 1,
-    };
-    const updated = [...categories, newCat];
-    setCategories(updated);
-    saveCategories(updated);
+    const finalImage = catImage || 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&q=80&w=400';
+
+    if (editingCategory) {
+      const updated = categories.map((c) =>
+        c.id === editingCategory.id
+          ? {
+              ...c,
+              name: catName,
+              description: catDesc || 'Premium beauty category by Denon Cosmetics.',
+              image: finalImage,
+            }
+          : c
+      );
+      setCategories(updated);
+      saveCategories(updated);
+      addAuditLog({
+        adminUser: `${selectedRole}`,
+        action: 'Updated Category',
+        category: 'Categories',
+        ipAddress: '182.185.120.45',
+        details: `Updated category "${catName}"`,
+      });
+      setEditingCategory(null);
+    } else {
+      const newCat: CategoryItem = {
+        id: `cat-${Date.now()}`,
+        name: catName,
+        description: catDesc || 'Premium beauty category by Denon Cosmetics.',
+        image: finalImage,
+        productCount: 0,
+        isActive: true,
+        sortOrder: categories.length + 1,
+      };
+      const updated = [...categories, newCat];
+      setCategories(updated);
+      saveCategories(updated);
+      addAuditLog({
+        adminUser: `${selectedRole}`,
+        action: 'Created Category',
+        category: 'Categories',
+        ipAddress: '182.185.120.45',
+        details: `Created new category "${catName}"`,
+      });
+    }
     setShowAddCategoryModal(false);
   };
 
@@ -1281,8 +1346,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               <p className="text-xs text-stone-500">Organize beauty lines and custom catalog groups.</p>
             </div>
             <button
-              onClick={() => setShowAddCategoryModal(true)}
-              className="px-4 py-2 bg-stone-900 text-amber-200 text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-md"
+              onClick={handleCreateCategoryClick}
+              className="px-4 py-2 bg-stone-900 text-amber-200 text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-md hover:bg-stone-800 transition-all"
             >
               <Plus className="w-4 h-4" />
               <span>Create Category</span>
@@ -1291,8 +1356,26 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {categories.map((c) => (
-              <div key={c.id} className="glass-card p-5 rounded-2xl border border-white/70 space-y-3 relative">
-                <img src={c.image} alt={c.name} className="w-full h-32 object-cover rounded-xl bg-stone-100" />
+              <div key={c.id} className="glass-card p-5 rounded-2xl border border-white/70 space-y-3 relative group">
+                <div className="relative overflow-hidden rounded-xl bg-stone-100 h-36">
+                  <img src={c.image} alt={c.name} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                  <div className="absolute top-2 right-2 flex gap-1.5">
+                    <button
+                      onClick={() => handleEditCategoryClick(c)}
+                      className="p-1.5 bg-white/90 backdrop-blur-xs text-stone-900 rounded-lg hover:bg-white shadow-md font-bold text-xs"
+                      title="Edit Category & Image"
+                    >
+                      <Edit className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteCategory(c.id, c.name)}
+                      className="p-1.5 bg-rose-500/90 backdrop-blur-xs text-white rounded-lg hover:bg-rose-600 shadow-md font-bold text-xs"
+                      title="Delete Category"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
                 <div>
                   <h3 className="font-bold text-stone-900 text-sm">{c.name}</h3>
                   <p className="text-xs text-stone-600 line-clamp-2 mt-1">{c.description}</p>
@@ -2164,16 +2247,14 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 </div>
               </div>
 
-              <div>
-                <label className="block text-stone-700 mb-1">Main Image URL</label>
-                <input
-                  type="text"
-                  required
-                  value={pImage}
-                  onChange={(e) => setPImage(e.target.value)}
-                  className="w-full p-2.5 border rounded-xl"
-                />
-              </div>
+              {/* PRODUCT IMAGE UPLOAD FIELD */}
+              <ImageUploader
+                label="Product Main Image *"
+                value={pImage}
+                onChange={(val) => setPImage(val)}
+                helperText="Upload or drag a high-resolution product photo directly from your computer, phone gallery, or device file manager."
+                previewHeightClass="h-56"
+              />
 
               <div>
                 <label className="block text-stone-700 mb-1">Ingredients (Comma separated)</label>
@@ -2247,12 +2328,14 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         </div>
       )}
 
-      {/* CREATE CATEGORY MODAL */}
+      {/* CREATE / EDIT CATEGORY MODAL */}
       {showAddCategoryModal && (
         <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-md border border-stone-200 shadow-2xl space-y-4">
-            <h2 className="font-serif text-lg font-bold text-stone-900">Create New Category</h2>
-            <form onSubmit={handleAddCategory} className="space-y-3 text-xs font-semibold">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 w-full max-w-md border border-stone-200 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <h2 className="font-serif text-lg font-bold text-stone-900">
+              {editingCategory ? 'Edit Category' : 'Create New Category'}
+            </h2>
+            <form onSubmit={handleAddCategory} className="space-y-4 text-xs font-semibold">
               <div>
                 <label className="block text-stone-700 mb-1">Category Name</label>
                 <input
@@ -2274,26 +2357,25 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 />
               </div>
 
-              <div>
-                <label className="block text-stone-700 mb-1">Image URL</label>
-                <input
-                  type="text"
-                  value={catImage}
-                  onChange={(e) => setCatImage(e.target.value)}
-                  className="w-full p-2.5 border rounded-xl"
-                />
-              </div>
+              {/* CATEGORY IMAGE UPLOAD FIELD */}
+              <ImageUploader
+                label="Category Cover Image *"
+                value={catImage}
+                onChange={(val) => setCatImage(val)}
+                helperText="Select or drag a category cover photo directly from your device gallery or file manager."
+                previewHeightClass="h-44"
+              />
 
               <div className="flex gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setShowAddCategoryModal(false)}
-                  className="w-full py-2 bg-stone-100 font-bold rounded-xl"
+                  className="w-full py-2.5 bg-stone-100 font-bold text-stone-800 rounded-xl hover:bg-stone-200"
                 >
                   Cancel
                 </button>
-                <button type="submit" className="w-full py-2 bg-stone-900 text-amber-200 font-bold rounded-xl">
-                  Save Category
+                <button type="submit" className="w-full py-2.5 bg-stone-900 text-amber-200 font-bold rounded-xl hover:bg-stone-800 shadow-md">
+                  {editingCategory ? 'Update Category' : 'Save Category'}
                 </button>
               </div>
             </form>
@@ -2340,15 +2422,14 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 />
               </div>
 
-              <div>
-                <label className="block text-stone-700 mb-1">Featured Image URL</label>
-                <input
-                  type="text"
-                  value={blogImage}
-                  onChange={(e) => setBlogImage(e.target.value)}
-                  className="w-full p-2.5 border rounded-xl"
-                />
-              </div>
+              {/* BLOG IMAGE UPLOAD FIELD */}
+              <ImageUploader
+                label="Featured Article Photo *"
+                value={blogImage}
+                onChange={(val) => setBlogImage(val)}
+                helperText="Upload or drag a banner photo directly from your device."
+                previewHeightClass="h-40"
+              />
 
               <div className="flex gap-2 pt-2">
                 <button
@@ -2428,42 +2509,40 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       {/* CREATE MEDIA MODAL */}
       {showAddMediaModal && (
         <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-md border border-stone-200 shadow-2xl space-y-4">
-            <h2 className="font-serif text-lg font-bold text-stone-900">Add Media Asset URL</h2>
-            <form onSubmit={handleAddMedia} className="space-y-3 text-xs font-semibold">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 w-full max-w-md border border-stone-200 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <h2 className="font-serif text-lg font-bold text-stone-900">Upload New Media Asset</h2>
+            <form onSubmit={handleAddMedia} className="space-y-4 text-xs font-semibold">
               <div>
-                <label className="block text-stone-700 mb-1">Image Asset Name</label>
+                <label className="block text-stone-700 mb-1">Asset Display Name</label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. product_hero.png"
+                  placeholder="e.g. rice_face_wash_hero.png"
                   value={mediaName}
                   onChange={(e) => setMediaName(e.target.value)}
                   className="w-full p-2.5 border rounded-xl"
                 />
               </div>
 
-              <div>
-                <label className="block text-stone-700 mb-1">Direct Image URL</label>
-                <input
-                  type="text"
-                  required
-                  value={mediaUrl}
-                  onChange={(e) => setMediaUrl(e.target.value)}
-                  className="w-full p-2.5 border rounded-xl"
-                />
-              </div>
+              {/* MEDIA IMAGE UPLOAD FIELD */}
+              <ImageUploader
+                label="Select Media File *"
+                value={mediaUrl}
+                onChange={(val) => setMediaUrl(val)}
+                helperText="Upload or drag image file directly from device."
+                previewHeightClass="h-40"
+              />
 
               <div className="flex gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setShowAddMediaModal(false)}
-                  className="w-full py-2 bg-stone-100 font-bold rounded-xl"
+                  className="w-full py-2.5 bg-stone-100 font-bold text-stone-800 rounded-xl hover:bg-stone-200"
                 >
                   Cancel
                 </button>
-                <button type="submit" className="w-full py-2 bg-stone-900 text-amber-200 font-bold rounded-xl">
-                  Add Asset
+                <button type="submit" className="w-full py-2.5 bg-stone-900 text-amber-200 font-bold rounded-xl hover:bg-stone-800 shadow-md">
+                  Save Asset
                 </button>
               </div>
             </form>
