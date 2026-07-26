@@ -147,8 +147,12 @@ export function initializeStorage() {
 // Product Storage APIs
 export function getStoredProducts(): Product[] {
   initializeStorage();
-  const data = localStorage.getItem(PRODUCTS_KEY);
-  return data ? JSON.parse(data) : INITIAL_PRODUCTS;
+  try {
+    const data = localStorage.getItem(PRODUCTS_KEY);
+    return data ? JSON.parse(data) : INITIAL_PRODUCTS;
+  } catch {
+    return INITIAL_PRODUCTS;
+  }
 }
 
 export function saveProducts(products: Product[]): void {
@@ -158,8 +162,12 @@ export function saveProducts(products: Product[]): void {
 // Order Storage APIs
 export function getStoredOrders(): Order[] {
   initializeStorage();
-  const data = localStorage.getItem(ORDERS_KEY);
-  return data ? JSON.parse(data) : [];
+  try {
+    const data = localStorage.getItem(ORDERS_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch {
+    return [];
+  }
 }
 
 export function saveOrder(order: Order): Order {
@@ -184,8 +192,12 @@ export function updateOrderStatus(orderId: string, status: Order['status'], trac
 // Reviews Storage APIs
 export function getStoredReviews(): Review[] {
   initializeStorage();
-  const data = localStorage.getItem(REVIEWS_KEY);
-  return data ? JSON.parse(data) : INITIAL_REVIEWS;
+  try {
+    const data = localStorage.getItem(REVIEWS_KEY);
+    return data ? JSON.parse(data) : INITIAL_REVIEWS;
+  } catch {
+    return INITIAL_REVIEWS;
+  }
 }
 
 export function addReview(review: Review): Review[] {
@@ -198,8 +210,14 @@ export function addReview(review: Review): Review[] {
 // Settings Storage APIs
 export function getAdminSettings(): AdminSettings {
   initializeStorage();
-  const data = localStorage.getItem(SETTINGS_KEY);
-  return data ? JSON.parse(data) : INITIAL_ADMIN_SETTINGS;
+  try {
+    const data = localStorage.getItem(SETTINGS_KEY);
+    if (!data) return INITIAL_ADMIN_SETTINGS;
+    const parsed = JSON.parse(data);
+    return { ...INITIAL_ADMIN_SETTINGS, ...parsed };
+  } catch {
+    return INITIAL_ADMIN_SETTINGS;
+  }
 }
 
 export function saveAdminSettings(settings: AdminSettings): void {
@@ -209,8 +227,12 @@ export function saveAdminSettings(settings: AdminSettings): void {
 // Wishlist Storage APIs
 export function getWishlistIds(): string[] {
   initializeStorage();
-  const data = localStorage.getItem(WISHLIST_KEY);
-  return data ? JSON.parse(data) : [];
+  try {
+    const data = localStorage.getItem(WISHLIST_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch {
+    return [];
+  }
 }
 
 export function toggleWishlistId(productId: string): string[] {
@@ -228,8 +250,12 @@ export function saveReviews(reviews: Review[]): void {
 // Audit Logs API
 export function getStoredAuditLogs(): AuditLog[] {
   initializeStorage();
-  const data = localStorage.getItem(AUDIT_LOGS_KEY);
-  return data ? JSON.parse(data) : INITIAL_AUDIT_LOGS;
+  try {
+    const data = localStorage.getItem(AUDIT_LOGS_KEY);
+    return data ? JSON.parse(data) : INITIAL_AUDIT_LOGS;
+  } catch {
+    return INITIAL_AUDIT_LOGS;
+  }
 }
 
 export function addAuditLog(log: Omit<AuditLog, 'id' | 'timestamp'>): AuditLog[] {
@@ -247,8 +273,12 @@ export function addAuditLog(log: Omit<AuditLog, 'id' | 'timestamp'>): AuditLog[]
 // Customers API
 export function getStoredCustomers(): Customer[] {
   initializeStorage();
-  const data = localStorage.getItem(CUSTOMERS_KEY);
-  return data ? JSON.parse(data) : INITIAL_CUSTOMERS;
+  try {
+    const data = localStorage.getItem(CUSTOMERS_KEY);
+    return data ? JSON.parse(data) : INITIAL_CUSTOMERS;
+  } catch {
+    return INITIAL_CUSTOMERS;
+  }
 }
 
 export function saveCustomers(customers: Customer[]): void {
@@ -258,8 +288,12 @@ export function saveCustomers(customers: Customer[]): void {
 // Categories API
 export function getStoredCategories(): CategoryItem[] {
   initializeStorage();
-  const data = localStorage.getItem(CATEGORIES_KEY);
-  return data ? JSON.parse(data) : INITIAL_CATEGORIES;
+  try {
+    const data = localStorage.getItem(CATEGORIES_KEY);
+    return data ? JSON.parse(data) : INITIAL_CATEGORIES;
+  } catch {
+    return INITIAL_CATEGORIES;
+  }
 }
 
 export function saveCategories(categories: CategoryItem[]): void {
@@ -269,8 +303,12 @@ export function saveCategories(categories: CategoryItem[]): void {
 // AI Knowledge Base API
 export function getStoredAIKnowledge(): AIKnowledgeItem[] {
   initializeStorage();
-  const data = localStorage.getItem(AI_KNOWLEDGE_KEY);
-  return data ? JSON.parse(data) : INITIAL_AI_KNOWLEDGE;
+  try {
+    const data = localStorage.getItem(AI_KNOWLEDGE_KEY);
+    return data ? JSON.parse(data) : INITIAL_AI_KNOWLEDGE;
+  } catch {
+    return INITIAL_AI_KNOWLEDGE;
+  }
 }
 
 export function saveAIKnowledge(items: AIKnowledgeItem[]): void {
@@ -280,8 +318,12 @@ export function saveAIKnowledge(items: AIKnowledgeItem[]): void {
 // Blog Posts API
 export function getStoredBlogPosts(): BlogPost[] {
   initializeStorage();
-  const data = localStorage.getItem(BLOG_POSTS_KEY);
-  return data ? JSON.parse(data) : INITIAL_BLOG_POSTS;
+  try {
+    const data = localStorage.getItem(BLOG_POSTS_KEY);
+    return data ? JSON.parse(data) : INITIAL_BLOG_POSTS;
+  } catch {
+    return INITIAL_BLOG_POSTS;
+  }
 }
 
 export function saveBlogPosts(posts: BlogPost[]): void {
@@ -291,8 +333,13 @@ export function saveBlogPosts(posts: BlogPost[]): void {
 // SEO Settings API
 export function getStoredSEOSettings(): SEOSettings {
   initializeStorage();
-  const data = localStorage.getItem(SEO_KEY);
-  return data ? JSON.parse(data) : INITIAL_SEO;
+  try {
+    const data = localStorage.getItem(SEO_KEY);
+    if (!data) return INITIAL_SEO;
+    return { ...INITIAL_SEO, ...JSON.parse(data) };
+  } catch {
+    return INITIAL_SEO;
+  }
 }
 
 export function saveSEOSettings(seo: SEOSettings): void {
@@ -302,8 +349,12 @@ export function saveSEOSettings(seo: SEOSettings): void {
 // Media Library API
 export function getStoredMedia(): MediaItem[] {
   initializeStorage();
-  const data = localStorage.getItem(MEDIA_KEY);
-  return data ? JSON.parse(data) : INITIAL_MEDIA;
+  try {
+    const data = localStorage.getItem(MEDIA_KEY);
+    return data ? JSON.parse(data) : INITIAL_MEDIA;
+  } catch {
+    return INITIAL_MEDIA;
+  }
 }
 
 export function saveMedia(media: MediaItem[]): void {
