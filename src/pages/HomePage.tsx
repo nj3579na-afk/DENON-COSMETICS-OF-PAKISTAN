@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ArrowRight, Sparkles, ShieldCheck, Award, Heart, ShoppingBag, Star, Truck, CheckCircle2, ChevronRight } from 'lucide-react';
-import { Product, AdminSettings, CategoryType } from '../types';
+import { Product, AdminSettings, CategoryType, CategoryItem } from '../types';
+import { getStoredCategories } from '../services/api';
 import { ProductCard } from '../components/ProductCard';
 
 interface HomePageProps {
@@ -13,6 +14,7 @@ interface HomePageProps {
   onToggleWishlist: (productId: string) => void;
   settings: AdminSettings;
   setSelectedCategory: (cat: CategoryType) => void;
+  categories?: CategoryItem[];
 }
 
 export const HomePage: React.FC<HomePageProps> = ({
@@ -25,19 +27,14 @@ export const HomePage: React.FC<HomePageProps> = ({
   onToggleWishlist,
   settings,
   setSelectedCategory,
+  categories,
 }) => {
   const featuredProducts = products.filter((p) => p.isFeatured).slice(0, 4);
   const bestSellers = products.filter((p) => p.isBestSeller).slice(0, 4);
   const newArrivals = products.filter((p) => p.isNewArrival).slice(0, 4);
 
-  const categories = [
-    { name: 'Face Wash' as CategoryType, img: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&q=80&w=400', desc: 'Rice Water, Vitamin C & Charcoal' },
-    { name: 'Beauty Cream' as CategoryType, img: 'https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?auto=format&fit=crop&q=80&w=400', desc: '5 Days Formula, Rice & Pearl Cream' },
-    { name: 'Hair Removal Spray' as CategoryType, img: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&q=80&w=400', desc: 'Painless 4D Moult Removal Spray' },
-    { name: 'Body Lotion' as CategoryType, img: 'https://images.unsplash.com/photo-1526947425960-945c6e72858f?auto=format&fit=crop&q=80&w=400', desc: 'Rice & Aloe Vera 250ml Lotions' },
-    { name: 'Serum' as CategoryType, img: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&q=80&w=400', desc: 'Export Quality Pearl Radiance Serum' },
-    { name: 'Cream Bleach' as CategoryType, img: 'https://images.unsplash.com/photo-1608248597309-172314f107f7?auto=format&fit=crop&q=80&w=400', desc: 'Sansal Red Anaar & Shimmer Bleach' },
-  ];
+  const storedCategories = categories && categories.length > 0 ? categories : getStoredCategories();
+  const displayCategories = storedCategories.filter((c) => c.isActive !== false);
 
   return (
     <div className="space-y-16 pb-12">
@@ -154,18 +151,18 @@ export const HomePage: React.FC<HomePageProps> = ({
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          {categories.map((cat, idx) => (
+          {displayCategories.map((cat, idx) => (
             <div
-              key={idx}
+              key={cat.id || idx}
               onClick={() => {
-                setSelectedCategory(cat.name);
+                setSelectedCategory(cat.name as CategoryType);
                 setActiveTab('shop');
               }}
               className="group cursor-pointer bg-white rounded-2xl p-3 border border-stone-200/80 hover:border-amber-500/50 hover:shadow-lg transition-all text-center space-y-3"
             >
               <div className="aspect-square w-full rounded-xl bg-stone-100 overflow-hidden">
                 <img
-                  src={cat.img}
+                  src={cat.image || 'https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&q=80&w=400'}
                   alt={cat.name}
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                 />
@@ -174,7 +171,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                 <h3 className="font-serif text-xs font-bold text-stone-900 group-hover:text-amber-800">
                   {cat.name}
                 </h3>
-                <p className="text-[10px] text-stone-500 line-clamp-1 mt-0.5">{cat.desc}</p>
+                <p className="text-[10px] text-stone-500 line-clamp-1 mt-0.5">{cat.description}</p>
               </div>
             </div>
           ))}

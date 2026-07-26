@@ -21,8 +21,8 @@ import { BlogPage } from './pages/BlogPage';
 import { PoliciesPage } from './pages/PoliciesPage';
 import { AdminPage } from './pages/AdminPage';
 
-import { Product, CartItem, CategoryType, Order, AdminSettings } from './types';
-import { getStoredProducts, getAdminSettings, getWishlistIds, toggleWishlistId, initializeStorage } from './services/api';
+import { Product, CartItem, CategoryType, Order, AdminSettings, CategoryItem } from './types';
+import { getStoredProducts, getAdminSettings, getWishlistIds, toggleWishlistId, initializeStorage, getStoredCategories } from './services/api';
 import { Search, X } from 'lucide-react';
 
 export function App() {
@@ -30,6 +30,7 @@ export function App() {
   const [selectedCategory, setSelectedCategory] = useState<CategoryType>('All');
 
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [settings, setSettings] = useState<AdminSettings>(getAdminSettings());
 
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -46,6 +47,7 @@ export function App() {
   useEffect(() => {
     initializeStorage();
     setProducts(getStoredProducts());
+    setCategories(getStoredCategories());
     setWishlistIds(getWishlistIds());
     setSettings(getAdminSettings());
   }, []);
@@ -135,6 +137,7 @@ export function App() {
             onToggleWishlist={handleToggleWishlist}
             settings={settings}
             setSelectedCategory={setSelectedCategory}
+            categories={categories}
           />
         )}
 
@@ -157,6 +160,7 @@ export function App() {
             products={products}
             setActiveTab={setActiveTab}
             setSelectedCategory={setSelectedCategory}
+            categories={categories}
           />
         )}
 
@@ -213,6 +217,8 @@ export function App() {
             setProducts={setProducts}
             settings={settings}
             setSettings={setSettings}
+            categories={categories}
+            setCategories={setCategories}
           />
         )}
       </main>

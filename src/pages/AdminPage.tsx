@@ -89,6 +89,8 @@ interface AdminPageProps {
   setProducts: React.Dispatch<React.SetStateAction<Product[]>>;
   settings: AdminSettings;
   setSettings: React.Dispatch<React.SetStateAction<AdminSettings>>;
+  categories?: CategoryItem[];
+  setCategories?: React.Dispatch<React.SetStateAction<CategoryItem[]>>;
 }
 
 export const AdminPage: React.FC<AdminPageProps> = ({
@@ -96,6 +98,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   setProducts,
   settings,
   setSettings,
+  categories: categoriesProp,
+  setCategories: setCategoriesProp,
 }) => {
   // Authentication & Security State
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -177,6 +181,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [catName, setCatName] = useState<CategoryType>('Serum');
   const [catDesc, setCatDesc] = useState('');
   const [catImage, setCatImage] = useState('');
+  const [categorySaveSuccess, setCategorySaveSuccess] = useState('');
 
   // Blog Form State
   const [blogTitle, setBlogTitle] = useState('');
@@ -540,6 +545,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       const updated = categories.filter((c) => c.id !== id);
       setCategories(updated);
       saveCategories(updated);
+      if (setCategoriesProp) setCategoriesProp(updated);
       addAuditLog({
         adminUser: `${selectedRole}`,
         action: 'Deleted Category',
@@ -547,6 +553,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         ipAddress: '182.185.120.45',
         details: `Deleted category "${name}"`,
       });
+      setCategorySaveSuccess(`Category "${name}" deleted successfully.`);
+      setTimeout(() => setCategorySaveSuccess(''), 4000);
     }
   };
 
@@ -554,8 +562,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     e.preventDefault();
     const finalImage = catImage || 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&q=80&w=400';
 
+    let updated: CategoryItem[];
     if (editingCategory) {
-      const updated = categories.map((c) =>
+      updated = categories.map((c) =>
         c.id === editingCategory.id
           ? {
               ...c,
@@ -567,13 +576,15 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       );
       setCategories(updated);
       saveCategories(updated);
+      if (setCategoriesProp) setCategoriesProp(updated);
       addAuditLog({
         adminUser: `${selectedRole}`,
-        action: 'Updated Category',
+        action: 'Updated Category Image',
         category: 'Categories',
         ipAddress: '182.185.120.45',
-        details: `Updated category "${catName}"`,
+        details: `Updated image for category "${catName}"`,
       });
+      setCategorySaveSuccess(`Category "${catName}" image and information updated successfully! Visible on Home Page & Categories.`);
       setEditingCategory(null);
     } else {
       const newCat: CategoryItem = {
@@ -585,9 +596,10 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         isActive: true,
         sortOrder: categories.length + 1,
       };
-      const updated = [...categories, newCat];
+      updated = [...categories, newCat];
       setCategories(updated);
       saveCategories(updated);
+      if (setCategoriesProp) setCategoriesProp(updated);
       addAuditLog({
         adminUser: `${selectedRole}`,
         action: 'Created Category',
@@ -595,8 +607,10 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         ipAddress: '182.185.120.45',
         details: `Created new category "${catName}"`,
       });
+      setCategorySaveSuccess(`Category "${catName}" created successfully! Visible on Home Page & Categories.`);
     }
     setShowAddCategoryModal(false);
+    setTimeout(() => setCategorySaveSuccess(''), 5000);
   };
 
   // Add Blog
@@ -1356,6 +1370,18 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               <span>Create Category</span>
             </button>
           </div>
+
+          {categorySaveSuccess && (
+            <div className="p-4 bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-2xl flex items-center justify-between text-xs font-bold animate-fade-in shadow-xs">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                <span>{categorySaveSuccess}</span>
+              </div>
+              <button onClick={() => setCategorySaveSuccess('')} className="text-emerald-700 hover:text-emerald-900">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {categories.map((c) => (
