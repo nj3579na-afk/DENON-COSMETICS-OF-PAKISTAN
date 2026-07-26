@@ -237,16 +237,43 @@ export function initializeStorage() {
   }
 }
 
+import { uploadImageToSupabase } from '../lib/supabase';
+
 // Products
 export function getStoredProducts(): Product[] {
   initializeStorage();
   return cachedProducts;
 }
 
+export async function processAndUploadProductImages(products: Product[]): Promise<Product[]> {
+  if (!supabase) return products;
+  let updated = [...products];
+  let changed = false;
+
+  for (let i = 0; i < updated.length; i++) {
+    const prod = updated[i];
+    if (prod.image && prod.image.startsWith('data:image/')) {
+      const cdnUrl = await uploadImageToSupabase(prod.image, `prod_${prod.id}`);
+      updated[i] = { ...prod, image: cdnUrl };
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    cachedProducts = updated;
+    notifyDataUpdated();
+  }
+  return updated;
+}
+
 export function saveProducts(products: Product[]): void {
   cachedProducts = products;
   notifyDataUpdated();
-  saveToSupabase('products', 'products', products);
+
+  // Async upload base64 images if present and persist
+  processAndUploadProductImages(products).then((processed) => {
+    saveToSupabase('products', 'products', processed);
+  });
 }
 
 // Orders
@@ -355,10 +382,34 @@ export function getStoredCategories(): CategoryItem[] {
   return cachedCategories;
 }
 
+export async function processAndUploadCategoryImages(categories: CategoryItem[]): Promise<CategoryItem[]> {
+  if (!supabase) return categories;
+  let updated = [...categories];
+  let changed = false;
+
+  for (let i = 0; i < updated.length; i++) {
+    const cat = updated[i];
+    if (cat.image && cat.image.startsWith('data:image/')) {
+      const cdnUrl = await uploadImageToSupabase(cat.image, `cat_${cat.id}`);
+      updated[i] = { ...cat, image: cdnUrl };
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    cachedCategories = updated;
+    notifyDataUpdated();
+  }
+  return updated;
+}
+
 export function saveCategories(categories: CategoryItem[]): void {
   cachedCategories = categories;
   notifyDataUpdated();
-  saveToSupabase('categories', 'categories', categories);
+
+  processAndUploadCategoryImages(categories).then((processed) => {
+    saveToSupabase('categories', 'categories', processed);
+  });
 }
 
 // AI Knowledge

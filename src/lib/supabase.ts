@@ -12,19 +12,41 @@ const getEnv = (key: string): string => {
   return '';
 };
 
-const supabaseUrl = getEnv('VITE_SUPABASE_URL') || getEnv('SUPABASE_URL');
+const rawSupabaseUrl = getEnv('VITE_SUPABASE_URL') || getEnv('SUPABASE_URL');
 const supabaseAnonKey = getEnv('VITE_SUPABASE_ANON_KEY') || getEnv('SUPABASE_ANON_KEY');
+
+// Clean URL: Strip any trailing /rest/v1 or /rest/v1/ or trailing slash
+export const supabaseUrl = rawSupabaseUrl
+  ? rawSupabaseUrl.replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '')
+  : '';
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
 export const supabase: SupabaseClient | null = isSupabaseConfigured
-  ? createClient(supabaseUrl, supabaseAnonKey)
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      auth: { persistSession: false },
+    })
   : null;
 
 if (isSupabaseConfigured) {
   console.log('Supabase initialized successfully with URL:', supabaseUrl);
 } else {
   console.warn('Supabase is not configured. Missing SUPABASE_URL or SUPABASE_ANON_KEY.');
+}
+
+let bucketChecked = false;
+export async function ensureBucketExists(bucketName: string = 'denon-images'): Promise<void> {
+  if (!supabase || bucketChecked) return;
+  try {
+    const { data: buckets } = await supabase.storage.listBuckets();
+    const exists = buckets?.some((b) => b.name === bucketName);
+    if (!exists) {
+      await supabase.storage.createBucket(bucketName, { public: true });
+    }
+    bucketChecked = true;
+  } catch (e) {
+    console.warn('Bucket verification notice:', e);
+  }
 }
 
 /**
@@ -41,6 +63,8 @@ export async function uploadImageToSupabase(
   }
 
   try {
+    await ensureBucketExists('denon-images');
+
     let fileBlob: Blob;
     let extension = 'png';
 
@@ -70,7 +94,7 @@ export async function uploadImageToSupabase(
     const cleanPrefix = fileNamePrefix.replace(/[^a-zA-Z0-9_-]/g, '_');
     const filePath = `${cleanPrefix}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${extension}`;
 
-    // Upload to Supabase Storage
+    // Upload to Supabase Storage bucket
     const { data, error } = await supabase.storage.from(bucketName).upload(filePath, fileBlob, {
       contentType: fileBlob.type || `image/${extension}`,
       cacheControl: '3600',
@@ -78,15 +102,14 @@ export async function uploadImageToSupabase(
     });
 
     if (error) {
-      console.warn('Supabase storage upload warning (will attempt public URL or fallback):', error.message);
-      // Fallback if bucket hasn't been created yet: return base64 / blob URL
+      console.warn('Supabase storage upload notice:', error.message);
       return typeof fileOrBase64 === 'string' ? fileOrBase64 : URL.createObjectURL(fileOrBase64);
     }
 
     const { data: publicUrlData } = supabase.storage.from(bucketName).getPublicUrl(data.path);
     return publicUrlData.publicUrl;
   } catch (err) {
-    console.error('Error uploading image to Supabase:', err);
+    console.error('Error uploading image to Supabase Storage:', err);
     return typeof fileOrBase64 === 'string' ? fileOrBase64 : URL.createObjectURL(fileOrBase64);
   }
 }
