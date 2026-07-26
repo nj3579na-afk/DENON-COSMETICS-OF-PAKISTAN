@@ -63,6 +63,7 @@ export const AdminSettingsModule: React.FC<AdminSettingsModuleProps> = ({
     | 'links'
     | 'email'
     | 'security'
+    | 'supabase'
   >('profile');
 
   // Form Local State
@@ -321,6 +322,18 @@ export const AdminSettingsModule: React.FC<AdminSettingsModuleProps> = ({
         >
           <ShieldCheck className="w-4 h-4" />
           <span>Security & Sessions</span>
+        </button>
+
+        <button
+          onClick={() => setActiveSubTab('supabase')}
+          className={`px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 ${
+            activeSubTab === 'supabase'
+              ? 'bg-emerald-900 text-emerald-100 shadow-md font-extrabold'
+              : 'text-emerald-800 bg-emerald-50 hover:bg-emerald-100'
+          }`}
+        >
+          <Server className="w-4 h-4 text-emerald-500" />
+          <span>Supabase Database & Storage</span>
         </button>
       </div>
 
@@ -1591,6 +1604,224 @@ export const AdminSettingsModule: React.FC<AdminSettingsModuleProps> = ({
                   </div>
                   <span className="text-[10px] text-stone-500">2 hours ago</span>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 10. SUPABASE DATABASE & STORAGE SETUP TAB */}
+      {activeSubTab === 'supabase' && (
+        <div className="glass-panel p-6 sm:p-8 rounded-3xl border border-white/70 shadow-xl space-y-6 animate-fade-in">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-stone-200/80 pb-4">
+            <div>
+              <h2 className="font-serif text-xl font-bold text-stone-900 flex items-center gap-2">
+                <Server className="w-5 h-5 text-emerald-600" />
+                <span>Supabase Realtime Database & Storage Configuration</span>
+              </h2>
+              <p className="text-xs text-stone-500">
+                Connect your website to Supabase PostgreSQL database and Storage bucket for cross-device syncing of products, categories, orders, and images.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="px-3 py-1 bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-full text-xs font-bold flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>Connected to Cloud</span>
+              </span>
+            </div>
+          </div>
+
+          {/* Connection Details Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="p-4 bg-stone-900 text-white rounded-2xl space-y-2 border border-stone-800">
+              <div className="text-[10px] uppercase font-mono tracking-wider text-amber-300 font-bold">Supabase URL</div>
+              <div className="font-mono text-xs font-bold truncate text-emerald-300">
+                https://wnunborvbckacfqwzrfp.supabase.co
+              </div>
+              <p className="text-[10px] text-stone-400">Main REST API & Realtime websocket endpoint</p>
+            </div>
+
+            <div className="p-4 bg-stone-900 text-white rounded-2xl space-y-2 border border-stone-800">
+              <div className="text-[10px] uppercase font-mono tracking-wider text-amber-300 font-bold">Storage Bucket</div>
+              <div className="font-mono text-xs font-bold text-emerald-300 flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                <span>denon-images</span>
+              </div>
+              <p className="text-[10px] text-stone-400">CDN Storage for product & category uploaded images</p>
+            </div>
+
+            <div className="p-4 bg-stone-900 text-white rounded-2xl space-y-2 border border-stone-800">
+              <div className="text-[10px] uppercase font-mono tracking-wider text-amber-300 font-bold">Database Tables</div>
+              <div className="text-xs font-bold text-stone-200 flex flex-wrap gap-1">
+                <span className="px-1.5 py-0.5 bg-stone-800 text-amber-200 rounded text-[10px]">products</span>
+                <span className="px-1.5 py-0.5 bg-stone-800 text-amber-200 rounded text-[10px]">categories</span>
+                <span className="px-1.5 py-0.5 bg-stone-800 text-amber-200 rounded text-[10px]">orders</span>
+                <span className="px-1.5 py-0.5 bg-stone-800 text-amber-200 rounded text-[10px]">denon_store</span>
+              </div>
+              <p className="text-[10px] text-stone-400">Auto-synced across all mobile & desktop browsers</p>
+            </div>
+          </div>
+
+          {/* SQL SETUP GUIDE CARD */}
+          <div className="p-6 bg-gradient-to-br from-amber-900 to-stone-900 text-amber-50 rounded-3xl space-y-4 shadow-xl border border-amber-800/40">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="font-serif text-lg font-bold text-amber-200 flex items-center gap-2">
+                  <FileCode className="w-5 h-5 text-amber-400" />
+                  <span>One-Click Supabase Database & Storage Setup SQL</span>
+                </h3>
+                <p className="text-xs text-amber-100/80 mt-0.5">
+                  Run this exact SQL query in your Supabase SQL Editor to instantly create the required Storage Bucket, database tables, and RLS policies in your project.
+                </p>
+              </div>
+
+              <button
+                onClick={() => {
+                  const sqlText = `-- DENON COSMETICS SUPABASE SETUP SQL
+INSERT INTO storage.buckets (id, name, public) VALUES ('denon-images', 'denon-images', true) ON CONFLICT (id) DO UPDATE SET public = true;
+
+CREATE POLICY "Public Read Access on denon-images" ON storage.objects FOR SELECT USING (bucket_id = 'denon-images');
+CREATE POLICY "Public Upload Access on denon-images" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'denon-images');
+CREATE POLICY "Public Update Access on denon-images" ON storage.objects FOR UPDATE USING (bucket_id = 'denon-images');
+CREATE POLICY "Public Delete Access on denon-images" ON storage.objects FOR DELETE USING (bucket_id = 'denon-images');
+
+CREATE TABLE IF NOT EXISTS public.categories (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  image TEXT,
+  "productCount" INT DEFAULT 0,
+  "isActive" BOOLEAN DEFAULT true,
+  "sortOrder" INT DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.products (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  price NUMERIC NOT NULL,
+  "originalPrice" NUMERIC,
+  image TEXT,
+  category TEXT NOT NULL,
+  inStock BOOLEAN DEFAULT true,
+  rating NUMERIC DEFAULT 5.0,
+  reviewsCount INT DEFAULT 0,
+  badge TEXT,
+  isBestseller BOOLEAN DEFAULT false,
+  isFeatured BOOLEAN DEFAULT false,
+  volume TEXT,
+  ingredients TEXT[],
+  benefits TEXT[],
+  howToUse TEXT,
+  metaTitle TEXT,
+  metaDescription TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.orders (
+  id TEXT PRIMARY KEY,
+  date TIMESTAMPTZ DEFAULT NOW(),
+  customer JSONB NOT NULL,
+  items JSONB NOT NULL,
+  subtotal NUMERIC NOT NULL,
+  discount NUMERIC DEFAULT 0,
+  "shippingFee" NUMERIC DEFAULT 0,
+  total NUMERIC NOT NULL,
+  "paymentMethod" TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'Processing',
+  "trackingNumber" TEXT,
+  "courierName" TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.settings (
+  id TEXT PRIMARY KEY DEFAULT 'default',
+  "storeName" TEXT,
+  "supportEmail" TEXT,
+  "supportPhone" TEXT,
+  "whatsappNumber" TEXT,
+  "bankName" TEXT,
+  "bankAccountTitle" TEXT,
+  "bankAccountNumber" TEXT,
+  "bankIban" TEXT,
+  "easypaisaNumber" TEXT,
+  "easypaisaTitle" TEXT,
+  "jazzcashNumber" TEXT,
+  "jazzcashTitle" TEXT,
+  "codEnabled" BOOLEAN DEFAULT true,
+  "bankTransferEnabled" BOOLEAN DEFAULT true,
+  "easypaisaEnabled" BOOLEAN DEFAULT true,
+  "jazzcashEnabled" BOOLEAN DEFAULT true,
+  "standardShippingRate" NUMERIC,
+  "freeShippingThreshold" NUMERIC,
+  "bannerAnnouncement" TEXT,
+  "enableMaintenanceMode" BOOLEAN DEFAULT false,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.denon_store (
+  key TEXT PRIMARY KEY,
+  value JSONB NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.denon_store ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow public read categories" ON public.categories;
+CREATE POLICY "Allow public read categories" ON public.categories FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow public write categories" ON public.categories;
+CREATE POLICY "Allow public write categories" ON public.categories FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow public read products" ON public.products;
+CREATE POLICY "Allow public read products" ON public.products FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow public write products" ON public.products;
+CREATE POLICY "Allow public write products" ON public.products FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow public read orders" ON public.orders;
+CREATE POLICY "Allow public read orders" ON public.orders FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow public write orders" ON public.orders;
+CREATE POLICY "Allow public write orders" ON public.orders FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow public read settings" ON public.settings;
+CREATE POLICY "Allow public read settings" ON public.settings FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow public write settings" ON public.settings;
+CREATE POLICY "Allow public write settings" ON public.settings FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow public read denon_store" ON public.denon_store;
+CREATE POLICY "Allow public read denon_store" ON public.denon_store FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow public write denon_store" ON public.denon_store;
+CREATE POLICY "Allow public write denon_store" ON public.denon_store FOR ALL USING (true) WITH CHECK (true);`;
+
+                  navigator.clipboard.writeText(sqlText);
+                  alert('Copied Supabase Setup SQL Script to Clipboard! Now open your Supabase Dashboard -> SQL Editor, paste and click RUN.');
+                }}
+                className="px-5 py-2.5 bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold text-xs rounded-xl shadow-lg flex items-center gap-2 shrink-0 transition-all"
+              >
+                <Sparkles className="w-4 h-4 text-stone-900" />
+                <span>Copy Supabase SQL Setup Script</span>
+              </button>
+            </div>
+
+            {/* Step-by-step Instructions */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs">
+              <div className="p-3 bg-white/10 rounded-xl border border-white/10 space-y-1">
+                <div className="font-bold text-amber-300">1. Open Supabase Dashboard</div>
+                <p className="text-[11px] text-amber-100/70">Navigate to your project <span className="font-mono text-amber-200">wnunbor...</span> and click "SQL Editor".</p>
+              </div>
+
+              <div className="p-3 bg-white/10 rounded-xl border border-white/10 space-y-1">
+                <div className="font-bold text-amber-300">2. Click "New Query"</div>
+                <p className="text-[11px] text-amber-100/70">Paste the copied SQL code in the editor tab.</p>
+              </div>
+
+              <div className="p-3 bg-white/10 rounded-xl border border-white/10 space-y-1">
+                <div className="font-bold text-amber-300">3. Click "RUN" Button</div>
+                <p className="text-[11px] text-amber-100/70">Executes instantly and sets up storage bucket, tables & policies.</p>
               </div>
             </div>
           </div>
