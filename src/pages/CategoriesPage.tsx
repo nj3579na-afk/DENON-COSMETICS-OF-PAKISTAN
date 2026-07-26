@@ -47,9 +47,12 @@ export const CategoriesPage: React.FC<CategoriesPageProps> = ({
             >
               <div className="aspect-video w-full bg-stone-100 overflow-hidden relative">
                 <img
-                  src={cat.image || 'https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&q=80&w=600'}
+                  src={cat.image}
                   alt={cat.name}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&q=80&w=600';
+                  }}
                 />
                 <span className="absolute bottom-3 left-3 bg-stone-900/90 text-amber-300 text-[10px] font-bold px-2.5 py-1 rounded-md backdrop-blur-md">
                   {count} Products

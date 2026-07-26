@@ -213,12 +213,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     setReviews(getStoredReviews());
     setAuditLogs(getStoredAuditLogs());
     setCustomers(getStoredCustomers());
-    setCategories(getStoredCategories());
+    setCategories(categoriesProp && categoriesProp.length > 0 ? categoriesProp : getStoredCategories());
     setAIKnowledge(getStoredAIKnowledge());
     setBlogPosts(getStoredBlogPosts());
     setSEOSettings(getStoredSEOSettings());
     setMediaItems(getStoredMedia());
-  }, []);
+  }, [categoriesProp]);
 
   // Handle Login Logic with Lockout & 2FA
   const handleLogin = (e: React.FormEvent) => {

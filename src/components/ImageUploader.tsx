@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Upload, RefreshCw, Trash2, CheckCircle2, FileImage } from 'lucide-react';
+import { uploadImageToSupabase } from '../lib/supabase';
 
 interface ImageUploaderProps {
   label: string;
@@ -41,10 +42,15 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
     setIsProcessing(true);
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       const result = e.target?.result as string;
       if (result) {
-        onChange(result);
+        try {
+          const uploadedUrl = await uploadImageToSupabase(result, label || 'denon');
+          onChange(uploadedUrl);
+        } catch {
+          onChange(result);
+        }
       }
       setIsProcessing(false);
     };

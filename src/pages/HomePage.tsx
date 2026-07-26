@@ -33,8 +33,8 @@ export const HomePage: React.FC<HomePageProps> = ({
   const bestSellers = products.filter((p) => p.isBestSeller).slice(0, 4);
   const newArrivals = products.filter((p) => p.isNewArrival).slice(0, 4);
 
-  const storedCategories = categories && categories.length > 0 ? categories : getStoredCategories();
-  const displayCategories = storedCategories.filter((c) => c.isActive !== false);
+  const categoryList = categories && categories.length > 0 ? categories : getStoredCategories();
+  const displayCategories = categoryList.filter((c) => c.isActive !== false);
 
   return (
     <div className="space-y-16 pb-12">
@@ -162,9 +162,12 @@ export const HomePage: React.FC<HomePageProps> = ({
             >
               <div className="aspect-square w-full rounded-xl bg-stone-100 overflow-hidden">
                 <img
-                  src={cat.image || 'https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&q=80&w=400'}
+                  src={cat.image}
                   alt={cat.name}
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&q=80&w=400';
+                  }}
                 />
               </div>
               <div>

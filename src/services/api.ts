@@ -1,19 +1,7 @@
 import { Product, Order, Review, AdminSettings, SkinConsultationRequest, SkinConsultationResult, CategoryType, AuditLog, Customer, CategoryItem, AIKnowledgeItem, BlogPost, SEOSettings, MediaItem } from '../types';
 import { INITIAL_PRODUCTS } from '../data/products';
-import { INITIAL_ADMIN_SETTINGS, INITIAL_FAQS, INITIAL_BLOG_POSTS, INITIAL_REVIEWS } from '../data/initialData';
-
-const PRODUCTS_KEY = 'denon_products';
-const ORDERS_KEY = 'denon_orders';
-const REVIEWS_KEY = 'denon_reviews';
-const SETTINGS_KEY = 'denon_settings';
-const WISHLIST_KEY = 'denon_wishlist';
-const AUDIT_LOGS_KEY = 'denon_audit_logs';
-const CUSTOMERS_KEY = 'denon_customers';
-const CATEGORIES_KEY = 'denon_categories';
-const AI_KNOWLEDGE_KEY = 'denon_ai_knowledge';
-const BLOG_POSTS_KEY = 'denon_blog_posts';
-const SEO_KEY = 'denon_seo';
-const MEDIA_KEY = 'denon_media';
+import { INITIAL_ADMIN_SETTINGS, INITIAL_BLOG_POSTS, INITIAL_REVIEWS } from '../data/initialData';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 const INITIAL_CATEGORIES: CategoryItem[] = [
   { id: 'cat-1', name: 'Face Wash', description: 'Deep cleansing, rice water, charcoal & Vitamin C brightening face washes', image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&q=80&w=400', productCount: 4, isActive: true, sortOrder: 1 },
@@ -58,314 +46,374 @@ const INITIAL_MEDIA: MediaItem[] = [
   { id: 'med-3', name: 'denon_official_logo.png', url: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&q=80&w=200', folder: 'Logos', sizeKb: 110, uploadedAt: '2026-07-01' },
 ];
 
-// Helper to initialize LocalStorage if empty
-export function initializeStorage() {
-  if (!localStorage.getItem(PRODUCTS_KEY)) {
-    localStorage.setItem(PRODUCTS_KEY, JSON.stringify(INITIAL_PRODUCTS));
-  }
-  if (!localStorage.getItem(ORDERS_KEY)) {
-    const sampleOrders: Order[] = [
-      {
-        id: 'DENON-9821',
-        date: new Date(Date.now() - 86400000 * 2).toISOString(),
-        customer: {
-          fullName: 'Ayesha Chaudhry',
-          email: 'ayesha.c@gmail.com',
-          phone: '0301 5544332',
-          city: 'Lahore',
-          province: 'Punjab',
-          address: 'House 42, Block C, Gulberg III, Lahore',
-          orderNotes: 'Please call before delivery',
-        },
-        items: [
-          { product: INITIAL_PRODUCTS[0], quantity: 1 },
-          { product: INITIAL_PRODUCTS[9], quantity: 1 },
-        ],
-        subtotal: 1149,
-        discount: 0,
-        shippingFee: 0,
-        total: 1149,
-        paymentMethod: 'Cash on Delivery (COD)',
-        status: 'Shipped',
-        trackingNumber: 'TRAX-9988221',
-        courierName: 'Trax Courier PK',
-      },
-      {
-        id: 'DENON-9822',
-        date: new Date(Date.now() - 86400000 * 1).toISOString(),
-        customer: {
-          fullName: 'Usman Ali',
-          email: 'usman.ali@yahoo.com',
-          phone: '0333 4455667',
-          city: 'Rawalpindi',
-          province: 'Punjab',
-          address: 'Street 12, F-Block, Satellite Town, Rawalpindi',
-        },
-        items: [{ product: INITIAL_PRODUCTS[5], quantity: 2 }],
-        subtotal: 1100,
-        discount: 100,
-        shippingFee: 0,
-        total: 1000,
-        paymentMethod: 'Cash on Delivery (COD)',
-        status: 'Processing',
-      },
-    ];
-    localStorage.setItem(ORDERS_KEY, JSON.stringify(sampleOrders));
-  }
-  if (!localStorage.getItem(REVIEWS_KEY)) {
-    localStorage.setItem(REVIEWS_KEY, JSON.stringify(INITIAL_REVIEWS));
-  }
-  if (!localStorage.getItem(SETTINGS_KEY)) {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(INITIAL_ADMIN_SETTINGS));
-  }
-  if (!localStorage.getItem(WISHLIST_KEY)) {
-    localStorage.setItem(WISHLIST_KEY, JSON.stringify(['denon-rice-facewash', 'denon-beauty-serum']));
-  }
-  if (!localStorage.getItem(AUDIT_LOGS_KEY)) {
-    localStorage.setItem(AUDIT_LOGS_KEY, JSON.stringify(INITIAL_AUDIT_LOGS));
-  }
-  if (!localStorage.getItem(CUSTOMERS_KEY)) {
-    localStorage.setItem(CUSTOMERS_KEY, JSON.stringify(INITIAL_CUSTOMERS));
-  }
-  if (!localStorage.getItem(CATEGORIES_KEY)) {
-    localStorage.setItem(CATEGORIES_KEY, JSON.stringify(INITIAL_CATEGORIES));
-  }
-  if (!localStorage.getItem(AI_KNOWLEDGE_KEY)) {
-    localStorage.setItem(AI_KNOWLEDGE_KEY, JSON.stringify(INITIAL_AI_KNOWLEDGE));
-  }
-  if (!localStorage.getItem(BLOG_POSTS_KEY)) {
-    localStorage.setItem(BLOG_POSTS_KEY, JSON.stringify(INITIAL_BLOG_POSTS));
-  }
-  if (!localStorage.getItem(SEO_KEY)) {
-    localStorage.setItem(SEO_KEY, JSON.stringify(INITIAL_SEO));
-  }
-  if (!localStorage.getItem(MEDIA_KEY)) {
-    localStorage.setItem(MEDIA_KEY, JSON.stringify(INITIAL_MEDIA));
+const INITIAL_ORDERS: Order[] = [
+  {
+    id: 'DENON-9821',
+    date: new Date(Date.now() - 86400000 * 2).toISOString(),
+    customer: {
+      fullName: 'Ayesha Chaudhry',
+      email: 'ayesha.c@gmail.com',
+      phone: '0301 5544332',
+      city: 'Lahore',
+      province: 'Punjab',
+      address: 'House 42, Block C, Gulberg III, Lahore',
+      orderNotes: 'Please call before delivery',
+    },
+    items: [
+      { product: INITIAL_PRODUCTS[0], quantity: 1 },
+      { product: INITIAL_PRODUCTS[9], quantity: 1 },
+    ],
+    subtotal: 1149,
+    discount: 0,
+    shippingFee: 0,
+    total: 1149,
+    paymentMethod: 'Cash on Delivery (COD)',
+    status: 'Shipped',
+    trackingNumber: 'TRAX-9988221',
+    courierName: 'Trax Courier PK',
+  },
+  {
+    id: 'DENON-9822',
+    date: new Date(Date.now() - 86400000 * 1).toISOString(),
+    customer: {
+      fullName: 'Usman Ali',
+      email: 'usman.ali@yahoo.com',
+      phone: '0333 4455667',
+      city: 'Rawalpindi',
+      province: 'Punjab',
+      address: 'Street 12, F-Block, Satellite Town, Rawalpindi',
+    },
+    items: [{ product: INITIAL_PRODUCTS[5], quantity: 2 }],
+    subtotal: 1100,
+    discount: 100,
+    shippingFee: 0,
+    total: 1000,
+    paymentMethod: 'Cash on Delivery (COD)',
+    status: 'Processing',
+  },
+];
+
+// In-Memory Global State Cache
+let cachedProducts: Product[] = INITIAL_PRODUCTS;
+let cachedCategories: CategoryItem[] = INITIAL_CATEGORIES;
+let cachedSettings: AdminSettings = INITIAL_ADMIN_SETTINGS;
+let cachedOrders: Order[] = INITIAL_ORDERS;
+let cachedReviews: Review[] = INITIAL_REVIEWS;
+let cachedCustomers: Customer[] = INITIAL_CUSTOMERS;
+let cachedAuditLogs: AuditLog[] = INITIAL_AUDIT_LOGS;
+let cachedAIKnowledge: AIKnowledgeItem[] = INITIAL_AI_KNOWLEDGE;
+let cachedBlogPosts: BlogPost[] = INITIAL_BLOG_POSTS;
+let cachedSEO: SEOSettings = INITIAL_SEO;
+let cachedMedia: MediaItem[] = INITIAL_MEDIA;
+let cachedWishlist: string[] = ['denon-rice-facewash', 'denon-beauty-serum'];
+
+let isInitialized = false;
+
+function notifyDataUpdated() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('denon_data_updated'));
+    window.dispatchEvent(new CustomEvent('denon_categories_updated', { detail: cachedCategories }));
   }
 }
 
-// Product Storage APIs
+// Supabase Save Helper
+async function saveToSupabase<T>(tableName: string, storeKey: string, data: T[] | T): Promise<void> {
+  if (!supabase) return;
+  try {
+    // 1. Save to denon_store key-value table
+    await supabase.from('denon_store').upsert({ key: storeKey, value: data, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+
+    // 2. Also try upserting to relational table
+    if (Array.isArray(data)) {
+      await supabase.from(tableName).upsert(data as any, { onConflict: 'id' });
+    } else {
+      const row = { id: (data as any).id || 'default', ...(data as object) };
+      await supabase.from(tableName).upsert(row as any, { onConflict: 'id' });
+    }
+  } catch (err) {
+    console.warn(`Supabase save notice for ${tableName}/${storeKey}:`, err);
+  }
+}
+
+// Supabase Fetch Helper
+async function fetchFromSupabase<T>(tableName: string, storeKey: string, fallbackDefault: T): Promise<T> {
+  if (!supabase) return fallbackDefault;
+  try {
+    // 1. Check denon_store table first
+    const { data: storeData, error: storeError } = await supabase.from('denon_store').select('value').eq('key', storeKey).single();
+    if (!storeError && storeData && storeData.value) {
+      return storeData.value as T;
+    }
+
+    // 2. Check relational table
+    const { data, error } = await supabase.from(tableName).select('*');
+    if (!error && data && data.length > 0) {
+      if (Array.isArray(fallbackDefault)) {
+        return data as unknown as T;
+      } else {
+        return data[0] as unknown as T;
+      }
+    }
+  } catch (err) {
+    console.warn(`Supabase fetch notice for ${tableName}/${storeKey}:`, err);
+  }
+  return fallbackDefault;
+}
+
+// Main Supabase Sync Routine
+export async function syncAllFromSupabase(): Promise<void> {
+  if (!supabase) return;
+  try {
+    const [
+      categories,
+      products,
+      settings,
+      orders,
+      reviews,
+      customers,
+      auditLogs,
+      aiKnowledge,
+      blogs,
+      seo,
+      media,
+    ] = await Promise.all([
+      fetchFromSupabase<CategoryItem[]>('categories', 'categories', INITIAL_CATEGORIES),
+      fetchFromSupabase<Product[]>('products', 'products', INITIAL_PRODUCTS),
+      fetchFromSupabase<AdminSettings>('settings', 'settings', INITIAL_ADMIN_SETTINGS),
+      fetchFromSupabase<Order[]>('orders', 'orders', INITIAL_ORDERS),
+      fetchFromSupabase<Review[]>('reviews', 'reviews', INITIAL_REVIEWS),
+      fetchFromSupabase<Customer[]>('customers', 'customers', INITIAL_CUSTOMERS),
+      fetchFromSupabase<AuditLog[]>('audit_logs', 'audit_logs', INITIAL_AUDIT_LOGS),
+      fetchFromSupabase<AIKnowledgeItem[]>('ai_knowledge', 'ai_knowledge', INITIAL_AI_KNOWLEDGE),
+      fetchFromSupabase<BlogPost[]>('blog_posts', 'blog_posts', INITIAL_BLOG_POSTS),
+      fetchFromSupabase<SEOSettings>('seo_settings', 'seo', INITIAL_SEO),
+      fetchFromSupabase<MediaItem[]>('media_items', 'media', INITIAL_MEDIA),
+    ]);
+
+    cachedCategories = categories;
+    cachedProducts = products;
+    cachedSettings = settings;
+    cachedOrders = orders;
+    cachedReviews = reviews;
+    cachedCustomers = customers;
+    cachedAuditLogs = auditLogs;
+    cachedAIKnowledge = aiKnowledge;
+    cachedBlogPosts = blogs;
+    cachedSEO = seo;
+    cachedMedia = media;
+
+    notifyDataUpdated();
+  } catch (err) {
+    console.error('Failed to sync data from Supabase:', err);
+  }
+}
+
+// Subscribe to Realtime Supabase Database Changes across devices
+export function subscribeToSupabaseRealtime(onUpdate: () => void): (() => void) | null {
+  if (!supabase) return null;
+  try {
+    const channel = supabase
+      .channel('public:denon_db')
+      .on('postgres_changes', { event: '*', schema: 'public' }, () => {
+        syncAllFromSupabase().then(onUpdate);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  } catch (e) {
+    console.warn('Supabase Realtime subscription notice:', e);
+    return null;
+  }
+}
+
+// Initialize Storage and kick off Supabase Sync
+export function initializeStorage() {
+  if (isInitialized) return;
+  isInitialized = true;
+  if (isSupabaseConfigured) {
+    syncAllFromSupabase();
+  }
+}
+
+// Products
 export function getStoredProducts(): Product[] {
   initializeStorage();
-  try {
-    const data = localStorage.getItem(PRODUCTS_KEY);
-    return data ? JSON.parse(data) : INITIAL_PRODUCTS;
-  } catch {
-    return INITIAL_PRODUCTS;
-  }
+  return cachedProducts;
 }
 
 export function saveProducts(products: Product[]): void {
-  localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products));
+  cachedProducts = products;
+  notifyDataUpdated();
+  saveToSupabase('products', 'products', products);
 }
 
-// Order Storage APIs
+// Orders
 export function getStoredOrders(): Order[] {
   initializeStorage();
-  try {
-    const data = localStorage.getItem(ORDERS_KEY);
-    return data ? JSON.parse(data) : [];
-  } catch {
-    return [];
-  }
+  return cachedOrders;
 }
 
 export function saveOrder(order: Order): Order {
-  const orders = getStoredOrders();
-  orders.unshift(order);
-  localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
+  cachedOrders = [order, ...cachedOrders];
+  notifyDataUpdated();
+  saveToSupabase('orders', 'orders', cachedOrders);
   return order;
 }
 
 export function updateOrderStatus(orderId: string, status: Order['status'], trackingNumber?: string, courierName?: string): Order[] {
-  const orders = getStoredOrders();
-  const updated = orders.map((o) => {
+  cachedOrders = cachedOrders.map((o) => {
     if (o.id === orderId) {
       return { ...o, status, trackingNumber: trackingNumber || o.trackingNumber, courierName: courierName || o.courierName };
     }
     return o;
   });
-  localStorage.setItem(ORDERS_KEY, JSON.stringify(updated));
-  return updated;
+  notifyDataUpdated();
+  saveToSupabase('orders', 'orders', cachedOrders);
+  return cachedOrders;
 }
 
-// Reviews Storage APIs
+// Reviews
 export function getStoredReviews(): Review[] {
   initializeStorage();
-  try {
-    const data = localStorage.getItem(REVIEWS_KEY);
-    return data ? JSON.parse(data) : INITIAL_REVIEWS;
-  } catch {
-    return INITIAL_REVIEWS;
-  }
+  return cachedReviews;
 }
 
 export function addReview(review: Review): Review[] {
-  const reviews = getStoredReviews();
-  reviews.unshift(review);
-  localStorage.setItem(REVIEWS_KEY, JSON.stringify(reviews));
-  return reviews;
-}
-
-// Settings Storage APIs
-export function getAdminSettings(): AdminSettings {
-  initializeStorage();
-  try {
-    const data = localStorage.getItem(SETTINGS_KEY);
-    if (!data) return INITIAL_ADMIN_SETTINGS;
-    const parsed = JSON.parse(data);
-    return { ...INITIAL_ADMIN_SETTINGS, ...parsed };
-  } catch {
-    return INITIAL_ADMIN_SETTINGS;
-  }
-}
-
-export function saveAdminSettings(settings: AdminSettings): void {
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-}
-
-// Wishlist Storage APIs
-export function getWishlistIds(): string[] {
-  initializeStorage();
-  try {
-    const data = localStorage.getItem(WISHLIST_KEY);
-    return data ? JSON.parse(data) : [];
-  } catch {
-    return [];
-  }
-}
-
-export function toggleWishlistId(productId: string): string[] {
-  const current = getWishlistIds();
-  const exists = current.includes(productId);
-  const updated = exists ? current.filter((id) => id !== productId) : [...current, productId];
-  localStorage.setItem(WISHLIST_KEY, JSON.stringify(updated));
-  return updated;
+  cachedReviews = [review, ...cachedReviews];
+  notifyDataUpdated();
+  saveToSupabase('reviews', 'reviews', cachedReviews);
+  return cachedReviews;
 }
 
 export function saveReviews(reviews: Review[]): void {
-  localStorage.setItem(REVIEWS_KEY, JSON.stringify(reviews));
+  cachedReviews = reviews;
+  notifyDataUpdated();
+  saveToSupabase('reviews', 'reviews', reviews);
 }
 
-// Audit Logs API
+// Admin Settings
+export function getAdminSettings(): AdminSettings {
+  initializeStorage();
+  return cachedSettings;
+}
+
+export function saveAdminSettings(settings: AdminSettings): void {
+  cachedSettings = settings;
+  notifyDataUpdated();
+  saveToSupabase('settings', 'settings', settings);
+}
+
+// Wishlist
+export function getWishlistIds(): string[] {
+  initializeStorage();
+  return cachedWishlist;
+}
+
+export function toggleWishlistId(productId: string): string[] {
+  const exists = cachedWishlist.includes(productId);
+  cachedWishlist = exists ? cachedWishlist.filter((id) => id !== productId) : [...cachedWishlist, productId];
+  notifyDataUpdated();
+  saveToSupabase('wishlist', 'wishlist', cachedWishlist);
+  return cachedWishlist;
+}
+
+// Audit Logs
 export function getStoredAuditLogs(): AuditLog[] {
   initializeStorage();
-  try {
-    const data = localStorage.getItem(AUDIT_LOGS_KEY);
-    return data ? JSON.parse(data) : INITIAL_AUDIT_LOGS;
-  } catch {
-    return INITIAL_AUDIT_LOGS;
-  }
+  return cachedAuditLogs;
 }
 
 export function addAuditLog(log: Omit<AuditLog, 'id' | 'timestamp'>): AuditLog[] {
-  const logs = getStoredAuditLogs();
   const newLog: AuditLog = {
     ...log,
     id: `log-${Date.now()}`,
     timestamp: new Date().toISOString(),
   };
-  logs.unshift(newLog);
-  localStorage.setItem(AUDIT_LOGS_KEY, JSON.stringify(logs));
-  return logs;
+  cachedAuditLogs = [newLog, ...cachedAuditLogs];
+  notifyDataUpdated();
+  saveToSupabase('audit_logs', 'audit_logs', cachedAuditLogs);
+  return cachedAuditLogs;
 }
 
-// Customers API
+// Customers
 export function getStoredCustomers(): Customer[] {
   initializeStorage();
-  try {
-    const data = localStorage.getItem(CUSTOMERS_KEY);
-    return data ? JSON.parse(data) : INITIAL_CUSTOMERS;
-  } catch {
-    return INITIAL_CUSTOMERS;
-  }
+  return cachedCustomers;
 }
 
 export function saveCustomers(customers: Customer[]): void {
-  localStorage.setItem(CUSTOMERS_KEY, JSON.stringify(customers));
+  cachedCustomers = customers;
+  notifyDataUpdated();
+  saveToSupabase('customers', 'customers', customers);
 }
 
-// Categories API
+// Categories
 export function getStoredCategories(): CategoryItem[] {
   initializeStorage();
-  try {
-    const data = localStorage.getItem(CATEGORIES_KEY);
-    return data ? JSON.parse(data) : INITIAL_CATEGORIES;
-  } catch {
-    return INITIAL_CATEGORIES;
-  }
+  return cachedCategories;
 }
 
 export function saveCategories(categories: CategoryItem[]): void {
-  localStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories));
+  cachedCategories = categories;
+  notifyDataUpdated();
+  saveToSupabase('categories', 'categories', categories);
 }
 
-// AI Knowledge Base API
+// AI Knowledge
 export function getStoredAIKnowledge(): AIKnowledgeItem[] {
   initializeStorage();
-  try {
-    const data = localStorage.getItem(AI_KNOWLEDGE_KEY);
-    return data ? JSON.parse(data) : INITIAL_AI_KNOWLEDGE;
-  } catch {
-    return INITIAL_AI_KNOWLEDGE;
-  }
+  return cachedAIKnowledge;
 }
 
 export function saveAIKnowledge(items: AIKnowledgeItem[]): void {
-  localStorage.setItem(AI_KNOWLEDGE_KEY, JSON.stringify(items));
+  cachedAIKnowledge = items;
+  notifyDataUpdated();
+  saveToSupabase('ai_knowledge', 'ai_knowledge', items);
 }
 
-// Blog Posts API
+// Blog Posts
 export function getStoredBlogPosts(): BlogPost[] {
   initializeStorage();
-  try {
-    const data = localStorage.getItem(BLOG_POSTS_KEY);
-    return data ? JSON.parse(data) : INITIAL_BLOG_POSTS;
-  } catch {
-    return INITIAL_BLOG_POSTS;
-  }
+  return cachedBlogPosts;
 }
 
 export function saveBlogPosts(posts: BlogPost[]): void {
-  localStorage.setItem(BLOG_POSTS_KEY, JSON.stringify(posts));
+  cachedBlogPosts = posts;
+  notifyDataUpdated();
+  saveToSupabase('blog_posts', 'blog_posts', posts);
 }
 
-// SEO Settings API
+// SEO Settings
 export function getStoredSEOSettings(): SEOSettings {
   initializeStorage();
-  try {
-    const data = localStorage.getItem(SEO_KEY);
-    if (!data) return INITIAL_SEO;
-    return { ...INITIAL_SEO, ...JSON.parse(data) };
-  } catch {
-    return INITIAL_SEO;
-  }
+  return cachedSEO;
 }
 
 export function saveSEOSettings(seo: SEOSettings): void {
-  localStorage.setItem(SEO_KEY, JSON.stringify(seo));
+  cachedSEO = seo;
+  notifyDataUpdated();
+  saveToSupabase('seo_settings', 'seo', seo);
 }
 
-// Media Library API
+// Media
 export function getStoredMedia(): MediaItem[] {
   initializeStorage();
-  try {
-    const data = localStorage.getItem(MEDIA_KEY);
-    return data ? JSON.parse(data) : INITIAL_MEDIA;
-  } catch {
-    return INITIAL_MEDIA;
-  }
+  return cachedMedia;
 }
 
 export function saveMedia(media: MediaItem[]): void {
-  localStorage.setItem(MEDIA_KEY, JSON.stringify(media));
+  cachedMedia = media;
+  notifyDataUpdated();
+  saveToSupabase('media_items', 'media', media);
 }
 
 // Backup & Restore Database State
 export function exportDatabaseBackup(): string {
   initializeStorage();
   const backup = {
-    version: '2026.1.0',
+    version: '2026.2.0-supabase',
     timestamp: new Date().toISOString(),
     products: getStoredProducts(),
     orders: getStoredOrders(),
@@ -385,17 +433,18 @@ export function exportDatabaseBackup(): string {
 export function restoreDatabaseBackup(jsonData: string): boolean {
   try {
     const data = JSON.parse(jsonData);
-    if (data.products) localStorage.setItem(PRODUCTS_KEY, JSON.stringify(data.products));
-    if (data.orders) localStorage.setItem(ORDERS_KEY, JSON.stringify(data.orders));
-    if (data.reviews) localStorage.setItem(REVIEWS_KEY, JSON.stringify(data.reviews));
-    if (data.settings) localStorage.setItem(SETTINGS_KEY, JSON.stringify(data.settings));
-    if (data.auditLogs) localStorage.setItem(AUDIT_LOGS_KEY, JSON.stringify(data.auditLogs));
-    if (data.customers) localStorage.setItem(CUSTOMERS_KEY, JSON.stringify(data.customers));
-    if (data.categories) localStorage.setItem(CATEGORIES_KEY, JSON.stringify(data.categories));
-    if (data.aiKnowledge) localStorage.setItem(AI_KNOWLEDGE_KEY, JSON.stringify(data.aiKnowledge));
-    if (data.blogs) localStorage.setItem(BLOG_POSTS_KEY, JSON.stringify(data.blogs));
-    if (data.seo) localStorage.setItem(SEO_KEY, JSON.stringify(data.seo));
-    if (data.media) localStorage.setItem(MEDIA_KEY, JSON.stringify(data.media));
+    if (data.products) saveProducts(data.products);
+    if (data.orders) { cachedOrders = data.orders; saveToSupabase('orders', 'orders', data.orders); }
+    if (data.reviews) saveReviews(data.reviews);
+    if (data.settings) saveAdminSettings(data.settings);
+    if (data.auditLogs) { cachedAuditLogs = data.auditLogs; saveToSupabase('audit_logs', 'audit_logs', data.auditLogs); }
+    if (data.customers) saveCustomers(data.customers);
+    if (data.categories) saveCategories(data.categories);
+    if (data.aiKnowledge) saveAIKnowledge(data.aiKnowledge);
+    if (data.blogs) saveBlogPosts(data.blogs);
+    if (data.seo) saveSEOSettings(data.seo);
+    if (data.media) saveMedia(data.media);
+    notifyDataUpdated();
     return true;
   } catch (err) {
     console.error('Failed to restore backup:', err);

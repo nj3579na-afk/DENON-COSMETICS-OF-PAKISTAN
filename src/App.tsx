@@ -22,7 +22,7 @@ import { PoliciesPage } from './pages/PoliciesPage';
 import { AdminPage } from './pages/AdminPage';
 
 import { Product, CartItem, CategoryType, Order, AdminSettings, CategoryItem } from './types';
-import { getStoredProducts, getAdminSettings, getWishlistIds, toggleWishlistId, initializeStorage, getStoredCategories } from './services/api';
+import { getStoredProducts, getAdminSettings, getWishlistIds, toggleWishlistId, initializeStorage, getStoredCategories, subscribeToSupabaseRealtime, syncAllFromSupabase } from './services/api';
 import { Search, X } from 'lucide-react';
 
 export function App() {
@@ -30,7 +30,7 @@ export function App() {
   const [selectedCategory, setSelectedCategory] = useState<CategoryType>('All');
 
   const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<CategoryItem[]>([]);
+  const [categories, setCategories] = useState<CategoryItem[]>(() => getStoredCategories());
   const [settings, setSettings] = useState<AdminSettings>(getAdminSettings());
 
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -50,6 +50,29 @@ export function App() {
     setCategories(getStoredCategories());
     setWishlistIds(getWishlistIds());
     setSettings(getAdminSettings());
+
+    const refreshDataState = () => {
+      setProducts(getStoredProducts());
+      setCategories(getStoredCategories());
+      setWishlistIds(getWishlistIds());
+      setSettings(getAdminSettings());
+    };
+
+    // Perform background sync from Supabase
+    syncAllFromSupabase().then(refreshDataState);
+
+    window.addEventListener('denon_data_updated', refreshDataState);
+    window.addEventListener('denon_categories_updated', refreshDataState);
+    window.addEventListener('storage', refreshDataState);
+
+    const unsubscribeRealtime = subscribeToSupabaseRealtime(refreshDataState);
+
+    return () => {
+      window.removeEventListener('denon_data_updated', refreshDataState);
+      window.removeEventListener('denon_categories_updated', refreshDataState);
+      window.removeEventListener('storage', refreshDataState);
+      if (unsubscribeRealtime) unsubscribeRealtime();
+    };
   }, []);
 
   // Scroll to top on page navigation
