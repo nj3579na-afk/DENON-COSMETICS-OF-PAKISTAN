@@ -71,6 +71,7 @@ export interface Customer {
   phone: string;
   city: string;
   province: string;
+  address?: string;
   totalOrders: number;
   totalSpent: number;
   status: 'Active' | 'Blocked';

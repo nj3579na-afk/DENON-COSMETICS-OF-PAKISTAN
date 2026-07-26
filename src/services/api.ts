@@ -12,17 +12,11 @@ const INITIAL_CATEGORIES: CategoryItem[] = [
   { id: 'cat-6', name: 'Cream Bleach', description: 'Gentle skin whitening bleach cream formula with fruit extracts', image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&q=80&w=400', productCount: 1, isActive: true, sortOrder: 6 },
 ];
 
-const INITIAL_CUSTOMERS: Customer[] = [
-  { id: 'cust-101', fullName: 'Ayesha Chaudhry', email: 'ayesha.c@gmail.com', phone: '0301 5544332', city: 'Lahore', province: 'Punjab', totalOrders: 3, totalSpent: 3449, status: 'Active', joinedDate: '2026-05-12' },
-  { id: 'cust-102', fullName: 'Usman Ali', email: 'usman.ali@yahoo.com', phone: '0333 4455667', city: 'Rawalpindi', province: 'Punjab', totalOrders: 2, totalSpent: 2100, status: 'Active', joinedDate: '2026-06-01' },
-  { id: 'cust-103', fullName: 'Fatima Zafar', email: 'fatima.z@hotmail.com', phone: '0312 9988771', city: 'Karachi', province: 'Sindh', totalOrders: 4, totalSpent: 5200, status: 'Active', joinedDate: '2026-04-18' },
-  { id: 'cust-104', fullName: 'Zainab Bibi', email: 'zainab.b@gmail.com', phone: '0300 1234567', city: 'Islamabad', province: 'Federal', totalOrders: 1, totalSpent: 1199, status: 'Active', joinedDate: '2026-07-02' },
-];
+const INITIAL_CUSTOMERS: Customer[] = [];
 
 const INITIAL_AUDIT_LOGS: AuditLog[] = [
-  { id: 'log-1', timestamp: new Date(Date.now() - 3600000 * 2).toISOString(), adminUser: 'Super Admin (denon_admin)', action: 'Logged into Admin Portal', category: 'Security', ipAddress: '182.185.120.45', details: 'Successful 2FA login from Rawalpindi, PK' },
-  { id: 'log-2', timestamp: new Date(Date.now() - 3600000 * 5).toISOString(), adminUser: 'Super Admin (denon_admin)', action: 'Updated Shipping Rates', category: 'Settings', ipAddress: '182.185.120.45', details: 'Standard shipping set to PKR 199, Free threshold PKR 2,000' },
-  { id: 'log-3', timestamp: new Date(Date.now() - 3600000 * 12).toISOString(), adminUser: 'Inventory Manager', action: 'Restocked Product', category: 'Products', ipAddress: '39.40.110.12', details: 'Added 50 units to Denon Rice Facial Face Wash' },
+  { id: 'log-1', timestamp: new Date(Date.now() - 3600000 * 2).toISOString(), adminUser: 'Super Admin (denon_admin)', action: 'Logged into Admin Portal', category: 'Security', ipAddress: '182.185.120.45', details: 'Successful login' },
+  { id: 'log-2', timestamp: new Date(Date.now() - 3600000 * 5).toISOString(), adminUser: 'Super Admin (denon_admin)', action: 'Updated Settings', category: 'Settings', ipAddress: '182.185.120.45', details: 'Standard shipping rate updated' },
 ];
 
 const INITIAL_AI_KNOWLEDGE: AIKnowledgeItem[] = [
@@ -46,52 +40,7 @@ const INITIAL_MEDIA: MediaItem[] = [
   { id: 'med-3', name: 'denon_official_logo.png', url: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&q=80&w=200', folder: 'Logos', sizeKb: 110, uploadedAt: '2026-07-01' },
 ];
 
-const INITIAL_ORDERS: Order[] = [
-  {
-    id: 'DENON-9821',
-    date: new Date(Date.now() - 86400000 * 2).toISOString(),
-    customer: {
-      fullName: 'Ayesha Chaudhry',
-      email: 'ayesha.c@gmail.com',
-      phone: '0301 5544332',
-      city: 'Lahore',
-      province: 'Punjab',
-      address: 'House 42, Block C, Gulberg III, Lahore',
-      orderNotes: 'Please call before delivery',
-    },
-    items: [
-      { product: INITIAL_PRODUCTS[0], quantity: 1 },
-      { product: INITIAL_PRODUCTS[9], quantity: 1 },
-    ],
-    subtotal: 1149,
-    discount: 0,
-    shippingFee: 0,
-    total: 1149,
-    paymentMethod: 'Cash on Delivery (COD)',
-    status: 'Shipped',
-    trackingNumber: 'TRAX-9988221',
-    courierName: 'Trax Courier PK',
-  },
-  {
-    id: 'DENON-9822',
-    date: new Date(Date.now() - 86400000 * 1).toISOString(),
-    customer: {
-      fullName: 'Usman Ali',
-      email: 'usman.ali@yahoo.com',
-      phone: '0333 4455667',
-      city: 'Rawalpindi',
-      province: 'Punjab',
-      address: 'Street 12, F-Block, Satellite Town, Rawalpindi',
-    },
-    items: [{ product: INITIAL_PRODUCTS[5], quantity: 2 }],
-    subtotal: 1100,
-    discount: 100,
-    shippingFee: 0,
-    total: 1000,
-    paymentMethod: 'Cash on Delivery (COD)',
-    status: 'Processing',
-  },
-];
+const INITIAL_ORDERS: Order[] = [];
 
 // In-Memory Global State Cache
 let cachedProducts: Product[] = INITIAL_PRODUCTS;
@@ -116,16 +65,49 @@ function notifyDataUpdated() {
   }
 }
 
+function saveToLocalStorage(key: string, value: any) {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch (e) {
+      console.warn(`localStorage save error for ${key}:`, e);
+    }
+  }
+}
+
 // Supabase Save Helper
 async function saveToSupabase<T>(tableName: string, storeKey: string, data: T[] | T): Promise<void> {
   if (!supabase) return;
   try {
     // 1. Save to denon_store key-value table
-    await supabase.from('denon_store').upsert({ key: storeKey, value: data, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+    const { error: storeErr } = await supabase
+      .from('denon_store')
+      .upsert({ key: storeKey, value: data, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+
+    if (storeErr) {
+      console.warn(`denon_store upsert notice (${storeKey}):`, storeErr.message);
+    }
 
     // 2. Also try upserting to relational table
     if (Array.isArray(data)) {
-      await supabase.from(tableName).upsert(data as any, { onConflict: 'id' });
+      if (data.length > 0) {
+        const { error: relErr } = await supabase.from(tableName).upsert(data as any, { onConflict: 'id' });
+        if (relErr) {
+          console.warn(`Relational table upsert notice (${tableName}):`, relErr.message);
+        }
+      }
+
+      // Handle deletions for relational tables (e.g. products, categories)
+      if (tableName === 'products' || tableName === 'categories') {
+        const { data: currentRows } = await supabase.from(tableName).select('id');
+        if (currentRows && currentRows.length > 0) {
+          const currentIdsInApp = new Set(data.map((item: any) => item.id));
+          const idsToDelete = currentRows.map((r: any) => r.id).filter((id: string) => !currentIdsInApp.has(id));
+          if (idsToDelete.length > 0) {
+            await supabase.from(tableName).delete().in('id', idsToDelete);
+          }
+        }
+      }
     } else {
       const row = { id: (data as any).id || 'default', ...(data as object) };
       await supabase.from(tableName).upsert(row as any, { onConflict: 'id' });
@@ -135,29 +117,39 @@ async function saveToSupabase<T>(tableName: string, storeKey: string, data: T[] 
   }
 }
 
+interface FetchResult<T> {
+  data: T | null;
+  success: boolean;
+}
+
 // Supabase Fetch Helper
-async function fetchFromSupabase<T>(tableName: string, storeKey: string, fallbackDefault: T): Promise<T> {
-  if (!supabase) return fallbackDefault;
+async function fetchFromSupabase<T>(tableName: string, storeKey: string): Promise<FetchResult<T>> {
+  if (!supabase) return { data: null, success: false };
   try {
     // 1. Check denon_store table first
-    const { data: storeData, error: storeError } = await supabase.from('denon_store').select('value').eq('key', storeKey).single();
-    if (!storeError && storeData && storeData.value) {
-      return storeData.value as T;
+    const { data: storeData, error: storeError } = await supabase
+      .from('denon_store')
+      .select('value')
+      .eq('key', storeKey)
+      .maybeSingle();
+
+    if (!storeError && storeData && storeData.value !== undefined && storeData.value !== null) {
+      return { data: storeData.value as T, success: true };
     }
 
     // 2. Check relational table
     const { data, error } = await supabase.from(tableName).select('*');
     if (!error && data && data.length > 0) {
-      if (Array.isArray(fallbackDefault)) {
-        return data as unknown as T;
-      } else {
-        return data[0] as unknown as T;
-      }
+      return { data: data as unknown as T, success: true };
+    }
+
+    if (!error && data && data.length === 0) {
+      return { data: null, success: false };
     }
   } catch (err) {
     console.warn(`Supabase fetch notice for ${tableName}/${storeKey}:`, err);
   }
-  return fallbackDefault;
+  return { data: null, success: false };
 }
 
 // Main Supabase Sync Routine
@@ -165,44 +157,92 @@ export async function syncAllFromSupabase(): Promise<void> {
   if (!supabase) return;
   try {
     const [
-      categories,
-      products,
-      settings,
-      orders,
-      reviews,
-      customers,
-      auditLogs,
-      aiKnowledge,
-      blogs,
-      seo,
-      media,
+      categoriesRes,
+      productsRes,
+      settingsRes,
+      ordersRes,
+      reviewsRes,
+      customersRes,
+      auditLogsRes,
+      aiKnowledgeRes,
+      blogsRes,
+      seoRes,
+      mediaRes,
     ] = await Promise.all([
-      fetchFromSupabase<CategoryItem[]>('categories', 'categories', INITIAL_CATEGORIES),
-      fetchFromSupabase<Product[]>('products', 'products', INITIAL_PRODUCTS),
-      fetchFromSupabase<AdminSettings>('settings', 'settings', INITIAL_ADMIN_SETTINGS),
-      fetchFromSupabase<Order[]>('orders', 'orders', INITIAL_ORDERS),
-      fetchFromSupabase<Review[]>('reviews', 'reviews', INITIAL_REVIEWS),
-      fetchFromSupabase<Customer[]>('customers', 'customers', INITIAL_CUSTOMERS),
-      fetchFromSupabase<AuditLog[]>('audit_logs', 'audit_logs', INITIAL_AUDIT_LOGS),
-      fetchFromSupabase<AIKnowledgeItem[]>('ai_knowledge', 'ai_knowledge', INITIAL_AI_KNOWLEDGE),
-      fetchFromSupabase<BlogPost[]>('blog_posts', 'blog_posts', INITIAL_BLOG_POSTS),
-      fetchFromSupabase<SEOSettings>('seo_settings', 'seo', INITIAL_SEO),
-      fetchFromSupabase<MediaItem[]>('media_items', 'media', INITIAL_MEDIA),
+      fetchFromSupabase<CategoryItem[]>('categories', 'categories'),
+      fetchFromSupabase<Product[]>('products', 'products'),
+      fetchFromSupabase<AdminSettings>('settings', 'settings'),
+      fetchFromSupabase<Order[]>('orders', 'orders'),
+      fetchFromSupabase<Review[]>('reviews', 'reviews'),
+      fetchFromSupabase<Customer[]>('customers', 'customers'),
+      fetchFromSupabase<AuditLog[]>('audit_logs', 'audit_logs'),
+      fetchFromSupabase<AIKnowledgeItem[]>('ai_knowledge', 'ai_knowledge'),
+      fetchFromSupabase<BlogPost[]>('blog_posts', 'blog_posts'),
+      fetchFromSupabase<SEOSettings>('seo_settings', 'seo'),
+      fetchFromSupabase<MediaItem[]>('media_items', 'media'),
     ]);
 
-    cachedCategories = categories;
-    cachedProducts = products;
-    cachedSettings = settings;
-    cachedOrders = orders;
-    cachedReviews = reviews;
-    cachedCustomers = customers;
-    cachedAuditLogs = auditLogs;
-    cachedAIKnowledge = aiKnowledge;
-    cachedBlogPosts = blogs;
-    cachedSEO = seo;
-    cachedMedia = media;
+    let updated = false;
 
-    notifyDataUpdated();
+    if (categoriesRes.success && categoriesRes.data) {
+      cachedCategories = categoriesRes.data;
+      saveToLocalStorage('denon_categories', cachedCategories);
+      updated = true;
+    }
+    if (productsRes.success && productsRes.data) {
+      cachedProducts = productsRes.data;
+      saveToLocalStorage('denon_products', cachedProducts);
+      updated = true;
+    }
+    if (settingsRes.success && settingsRes.data) {
+      cachedSettings = settingsRes.data;
+      saveToLocalStorage('denon_settings', cachedSettings);
+      updated = true;
+    }
+    if (ordersRes.success && ordersRes.data) {
+      cachedOrders = ordersRes.data;
+      saveToLocalStorage('denon_orders', cachedOrders);
+      updated = true;
+    }
+    if (reviewsRes.success && reviewsRes.data) {
+      cachedReviews = reviewsRes.data;
+      saveToLocalStorage('denon_reviews', cachedReviews);
+      updated = true;
+    }
+    if (customersRes.success && customersRes.data) {
+      cachedCustomers = customersRes.data;
+      saveToLocalStorage('denon_customers', cachedCustomers);
+      updated = true;
+    }
+    if (auditLogsRes.success && auditLogsRes.data) {
+      cachedAuditLogs = auditLogsRes.data;
+      saveToLocalStorage('denon_audit_logs', cachedAuditLogs);
+      updated = true;
+    }
+    if (aiKnowledgeRes.success && aiKnowledgeRes.data) {
+      cachedAIKnowledge = aiKnowledgeRes.data;
+      saveToLocalStorage('denon_ai_knowledge', cachedAIKnowledge);
+      updated = true;
+    }
+    if (blogsRes.success && blogsRes.data) {
+      cachedBlogPosts = blogsRes.data;
+      saveToLocalStorage('denon_blog_posts', cachedBlogPosts);
+      updated = true;
+    }
+    if (seoRes.success && seoRes.data) {
+      cachedSEO = seoRes.data;
+      saveToLocalStorage('denon_seo', cachedSEO);
+      updated = true;
+    }
+    if (mediaRes.success && mediaRes.data) {
+      cachedMedia = mediaRes.data;
+      saveToLocalStorage('denon_media', cachedMedia);
+      updated = true;
+    }
+
+    if (updated) {
+      notifyDataUpdated();
+    }
   } catch (err) {
     console.error('Failed to sync data from Supabase:', err);
   }
@@ -232,6 +272,46 @@ export function subscribeToSupabaseRealtime(onUpdate: () => void): (() => void) 
 export function initializeStorage() {
   if (isInitialized) return;
   isInitialized = true;
+
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      const p = localStorage.getItem('denon_products');
+      if (p) cachedProducts = JSON.parse(p);
+
+      const c = localStorage.getItem('denon_categories');
+      if (c) cachedCategories = JSON.parse(c);
+
+      const o = localStorage.getItem('denon_orders');
+      if (o) cachedOrders = JSON.parse(o);
+
+      const s = localStorage.getItem('denon_settings');
+      if (s) cachedSettings = JSON.parse(s);
+
+      const r = localStorage.getItem('denon_reviews');
+      if (r) cachedReviews = JSON.parse(r);
+
+      const cust = localStorage.getItem('denon_customers');
+      if (cust) cachedCustomers = JSON.parse(cust);
+
+      const log = localStorage.getItem('denon_audit_logs');
+      if (log) cachedAuditLogs = JSON.parse(log);
+
+      const ai = localStorage.getItem('denon_ai_knowledge');
+      if (ai) cachedAIKnowledge = JSON.parse(ai);
+
+      const b = localStorage.getItem('denon_blog_posts');
+      if (b) cachedBlogPosts = JSON.parse(b);
+
+      const seo = localStorage.getItem('denon_seo');
+      if (seo) cachedSEO = JSON.parse(seo);
+
+      const med = localStorage.getItem('denon_media');
+      if (med) cachedMedia = JSON.parse(med);
+    } catch (e) {
+      console.warn('localStorage read error:', e);
+    }
+  }
+
   if (isSupabaseConfigured) {
     syncAllFromSupabase();
   }
@@ -268,10 +348,12 @@ export async function processAndUploadProductImages(products: Product[]): Promis
 
 export function saveProducts(products: Product[]): void {
   cachedProducts = products;
+  saveToLocalStorage('denon_products', products);
   notifyDataUpdated();
 
   // Async upload base64 images if present and persist
   processAndUploadProductImages(products).then((processed) => {
+    saveToLocalStorage('denon_products', processed);
     saveToSupabase('products', 'products', processed);
   });
 }
@@ -284,6 +366,7 @@ export function getStoredOrders(): Order[] {
 
 export function saveOrder(order: Order): Order {
   cachedOrders = [order, ...cachedOrders];
+  saveToLocalStorage('denon_orders', cachedOrders);
   notifyDataUpdated();
   saveToSupabase('orders', 'orders', cachedOrders);
   return order;
@@ -296,6 +379,7 @@ export function updateOrderStatus(orderId: string, status: Order['status'], trac
     }
     return o;
   });
+  saveToLocalStorage('denon_orders', cachedOrders);
   notifyDataUpdated();
   saveToSupabase('orders', 'orders', cachedOrders);
   return cachedOrders;
@@ -309,6 +393,7 @@ export function getStoredReviews(): Review[] {
 
 export function addReview(review: Review): Review[] {
   cachedReviews = [review, ...cachedReviews];
+  saveToLocalStorage('denon_reviews', cachedReviews);
   notifyDataUpdated();
   saveToSupabase('reviews', 'reviews', cachedReviews);
   return cachedReviews;
@@ -316,6 +401,7 @@ export function addReview(review: Review): Review[] {
 
 export function saveReviews(reviews: Review[]): void {
   cachedReviews = reviews;
+  saveToLocalStorage('denon_reviews', reviews);
   notifyDataUpdated();
   saveToSupabase('reviews', 'reviews', reviews);
 }
@@ -328,6 +414,7 @@ export function getAdminSettings(): AdminSettings {
 
 export function saveAdminSettings(settings: AdminSettings): void {
   cachedSettings = settings;
+  saveToLocalStorage('denon_settings', settings);
   notifyDataUpdated();
   saveToSupabase('settings', 'settings', settings);
 }
@@ -359,6 +446,7 @@ export function addAuditLog(log: Omit<AuditLog, 'id' | 'timestamp'>): AuditLog[]
     timestamp: new Date().toISOString(),
   };
   cachedAuditLogs = [newLog, ...cachedAuditLogs];
+  saveToLocalStorage('denon_audit_logs', cachedAuditLogs);
   notifyDataUpdated();
   saveToSupabase('audit_logs', 'audit_logs', cachedAuditLogs);
   return cachedAuditLogs;
@@ -372,6 +460,7 @@ export function getStoredCustomers(): Customer[] {
 
 export function saveCustomers(customers: Customer[]): void {
   cachedCustomers = customers;
+  saveToLocalStorage('denon_customers', customers);
   notifyDataUpdated();
   saveToSupabase('customers', 'customers', customers);
 }
@@ -398,6 +487,7 @@ export async function processAndUploadCategoryImages(categories: CategoryItem[])
 
   if (changed) {
     cachedCategories = updated;
+    saveToLocalStorage('denon_categories', updated);
     notifyDataUpdated();
   }
   return updated;
@@ -405,9 +495,11 @@ export async function processAndUploadCategoryImages(categories: CategoryItem[])
 
 export function saveCategories(categories: CategoryItem[]): void {
   cachedCategories = categories;
+  saveToLocalStorage('denon_categories', categories);
   notifyDataUpdated();
 
   processAndUploadCategoryImages(categories).then((processed) => {
+    saveToLocalStorage('denon_categories', processed);
     saveToSupabase('categories', 'categories', processed);
   });
 }
@@ -420,6 +512,7 @@ export function getStoredAIKnowledge(): AIKnowledgeItem[] {
 
 export function saveAIKnowledge(items: AIKnowledgeItem[]): void {
   cachedAIKnowledge = items;
+  saveToLocalStorage('denon_ai_knowledge', items);
   notifyDataUpdated();
   saveToSupabase('ai_knowledge', 'ai_knowledge', items);
 }
@@ -432,6 +525,7 @@ export function getStoredBlogPosts(): BlogPost[] {
 
 export function saveBlogPosts(posts: BlogPost[]): void {
   cachedBlogPosts = posts;
+  saveToLocalStorage('denon_blog_posts', posts);
   notifyDataUpdated();
   saveToSupabase('blog_posts', 'blog_posts', posts);
 }
@@ -444,6 +538,7 @@ export function getStoredSEOSettings(): SEOSettings {
 
 export function saveSEOSettings(seo: SEOSettings): void {
   cachedSEO = seo;
+  saveToLocalStorage('denon_seo', seo);
   notifyDataUpdated();
   saveToSupabase('seo_settings', 'seo', seo);
 }
@@ -456,6 +551,7 @@ export function getStoredMedia(): MediaItem[] {
 
 export function saveMedia(media: MediaItem[]): void {
   cachedMedia = media;
+  saveToLocalStorage('denon_media', media);
   notifyDataUpdated();
   saveToSupabase('media_items', 'media', media);
 }

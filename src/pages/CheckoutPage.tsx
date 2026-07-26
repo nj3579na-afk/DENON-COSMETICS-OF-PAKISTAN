@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ShieldCheck, Truck, ArrowRight, CheckCircle2, MessageCircle, MapPin, Phone, User, Mail, FileText } from 'lucide-react';
-import { CartItem, Order, AdminSettings } from '../types';
+import { CartItem, Order, AdminSettings, Customer } from '../types';
 import { saveOrder } from '../services/api';
 
 interface CheckoutPageProps {
@@ -28,6 +28,25 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<Order['paymentMethod']>('Cash on Delivery (COD)');
 
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
+
+  // Auto-fill currently logged-in user profile if exists
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('denon_current_customer');
+      if (stored) {
+        try {
+          const user: Customer = JSON.parse(stored);
+          if (user.fullName) setFullName(user.fullName);
+          if (user.email) setEmail(user.email);
+          if (user.phone) setPhone(user.phone);
+          if (user.city) setCity(user.city);
+          if (user.address) setAddress(user.address);
+        } catch (e) {
+          console.warn('Checkout profile parse notice:', e);
+        }
+      }
+    }
+  }, []);
 
   const subtotal = cartItems.reduce((acc, item) => acc + item.product.salePrice * item.quantity, 0);
   const amountAfterDiscount = subtotal - discountAmount;
@@ -193,7 +212,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Ayesha Chaudhry"
+                    placeholder="e.g. Fatima Khan"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     className="w-full px-3 py-2.5 border border-stone-300 rounded-xl text-xs font-medium focus:ring-1 focus:ring-amber-800"
