@@ -23,9 +23,12 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+
   const handleFileSelect = (file: File) => {
-    if (!file.type.startsWith('image/')) {
-      setError('Please select a valid image file (PNG, JPG, WEBP, GIF, etc.)');
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'];
+    if (!validTypes.includes(file.type.toLowerCase()) && !file.type.startsWith('image/')) {
+      setError('Invalid format. Please select a JPG, JPEG, PNG, or WEBP image file.');
       return;
     }
     // Limit to 15MB
@@ -46,7 +49,7 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
       setIsProcessing(false);
     };
     reader.onerror = () => {
-      setError('Failed to read image file. Please try selecting another file.');
+      setError('Failed to process image file. Upload error occurred.');
       setIsProcessing(false);
     };
     reader.readAsDataURL(file);
@@ -81,6 +84,7 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
 
   const handleRemove = () => {
     onChange('');
+    setShowConfirmDelete(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -124,24 +128,46 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="px-3 py-1.5 bg-amber-900 text-amber-100 hover:bg-amber-950 text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-xs transition-all"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-                <span>Replace Image</span>
-              </button>
+              {showConfirmDelete ? (
+                <div className="flex items-center gap-2 bg-rose-50 p-1 rounded-xl border border-rose-200 animate-fadeIn">
+                  <span className="text-[11px] font-bold text-rose-700 px-1">Delete image?</span>
+                  <button
+                    type="button"
+                    onClick={handleRemove}
+                    className="px-2.5 py-1 bg-rose-600 text-white text-[11px] font-bold rounded-lg hover:bg-rose-700 transition-all shadow-xs"
+                  >
+                    Yes, Remove
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmDelete(false)}
+                    className="px-2.5 py-1 bg-stone-200 text-stone-700 text-[11px] font-bold rounded-lg hover:bg-stone-300 transition-all"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-3 py-1.5 bg-amber-900 text-amber-100 hover:bg-amber-950 text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-xs transition-all"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Replace Image</span>
+                  </button>
 
-              <button
-                type="button"
-                onClick={handleRemove}
-                className="px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-bold rounded-xl flex items-center gap-1.5 border border-rose-200 transition-all"
-                title="Remove image"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Remove</span>
-              </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmDelete(true)}
+                    className="px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-bold rounded-xl flex items-center gap-1.5 border border-rose-200 transition-all"
+                    title="Remove image"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Remove</span>
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>

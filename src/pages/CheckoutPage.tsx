@@ -298,60 +298,196 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
               </h2>
 
               <div className="space-y-3">
-                <label
-                  onClick={() => setPaymentMethod('Cash on Delivery (COD)')}
-                  className={`p-4 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
-                    paymentMethod === 'Cash on Delivery (COD)'
-                      ? 'bg-amber-50/80 border-amber-600 shadow-2xs'
-                      : 'bg-stone-50 border-stone-200'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="radio"
-                      name="payment"
-                      checked={paymentMethod === 'Cash on Delivery (COD)'}
-                      onChange={() => setPaymentMethod('Cash on Delivery (COD)')}
-                      className="accent-amber-800"
-                    />
-                    <div>
-                      <h4 className="font-serif text-xs font-bold text-stone-900">
-                        Cash on Delivery (COD) — Recommended
-                      </h4>
-                      <p className="text-[11px] text-stone-600">
-                        Pay cash directly to Trax / TCS courier upon delivery at your doorstep.
-                      </p>
+                {/* Cash on Delivery */}
+                {settings.codEnabled !== false && (
+                  <div
+                    onClick={() => setPaymentMethod('Cash on Delivery (COD)')}
+                    className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                      paymentMethod === 'Cash on Delivery (COD)'
+                        ? 'bg-amber-50/80 border-amber-600 shadow-2xs'
+                        : 'bg-stone-50 border-stone-200 hover:bg-stone-100/80'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="radio"
+                          name="payment"
+                          checked={paymentMethod === 'Cash on Delivery (COD)'}
+                          onChange={() => setPaymentMethod('Cash on Delivery (COD)')}
+                          className="accent-amber-800"
+                        />
+                        <div>
+                          <h4 className="font-serif text-xs font-bold text-stone-900">
+                            Cash on Delivery (COD) — Recommended
+                          </h4>
+                          <p className="text-[11px] text-stone-600">
+                            {settings.codInstructions || 'Pay cash directly to courier upon delivery at your doorstep.'}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="bg-emerald-700 text-white text-[10px] font-bold px-2.5 py-1 rounded-md uppercase shrink-0 ml-2">
+                        MOST POPULAR
+                      </span>
                     </div>
                   </div>
-                  <span className="bg-emerald-700 text-white text-[10px] font-bold px-2.5 py-1 rounded-md uppercase shrink-0">
-                    MOST POPULAR
-                  </span>
-                </label>
+                )}
 
-                <label
-                  onClick={() => setPaymentMethod('JazzCash')}
-                  className={`p-4 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
-                    paymentMethod === 'JazzCash'
-                      ? 'bg-amber-50/80 border-amber-600 shadow-2xs'
-                      : 'bg-stone-50 border-stone-200'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="radio"
-                      name="payment"
-                      checked={paymentMethod === 'JazzCash'}
-                      onChange={() => setPaymentMethod('JazzCash')}
-                      className="accent-amber-800"
-                    />
-                    <div>
-                      <h4 className="font-serif text-xs font-bold text-stone-900">JazzCash / EasyPaisa</h4>
-                      <p className="text-[11px] text-stone-600">
-                        Online wallet payment details will be provided upon order submission.
-                      </p>
+                {/* EasyPaisa */}
+                {settings.easypaisaEnabled !== false && (
+                  <div
+                    onClick={() => setPaymentMethod('EasyPaisa')}
+                    className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                      paymentMethod === 'EasyPaisa'
+                        ? 'bg-emerald-50/80 border-emerald-600 shadow-2xs'
+                        : 'bg-stone-50 border-stone-200 hover:bg-stone-100/80'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        <input
+                          type="radio"
+                          name="payment"
+                          checked={paymentMethod === 'EasyPaisa'}
+                          onChange={() => setPaymentMethod('EasyPaisa')}
+                          className="accent-emerald-700 mt-1"
+                        />
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-xs text-stone-900">EasyPaisa Mobile Account</span>
+                            <span className="bg-emerald-100 text-emerald-800 font-bold text-[10px] px-2 py-0.5 rounded">
+                              Instant Transfer
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-stone-700 font-medium">
+                            <span>Title: <strong>{settings.easypaisaAccountTitle || 'DENON Cosmetics'}</strong></span>
+                            <span className="mx-2">•</span>
+                            <span>Number: <strong className="font-mono text-emerald-800">{settings.easypaisaMobileNumber || '0312 9206522'}</strong></span>
+                          </div>
+                          {settings.easypaisaInstructions && (
+                            <p className="text-[11px] text-stone-500 italic mt-1">
+                              {settings.easypaisaInstructions}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      {settings.easypaisaQrCode && paymentMethod === 'EasyPaisa' && (
+                        <div className="shrink-0 text-center">
+                          <img
+                            src={settings.easypaisaQrCode}
+                            alt="EasyPaisa QR Code"
+                            className="w-20 h-20 object-contain rounded-lg border border-stone-300 bg-white shadow-xs p-1"
+                          />
+                          <span className="text-[9px] text-stone-500 font-bold block mt-1">Scan QR Code</span>
+                        </div>
+                      )}
                     </div>
                   </div>
-                </label>
+                )}
+
+                {/* JazzCash */}
+                {settings.jazzcashEnabled !== false && (
+                  <div
+                    onClick={() => setPaymentMethod('JazzCash')}
+                    className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                      paymentMethod === 'JazzCash'
+                        ? 'bg-rose-50/80 border-rose-600 shadow-2xs'
+                        : 'bg-stone-50 border-stone-200 hover:bg-stone-100/80'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        <input
+                          type="radio"
+                          name="payment"
+                          checked={paymentMethod === 'JazzCash'}
+                          onChange={() => setPaymentMethod('JazzCash')}
+                          className="accent-rose-700 mt-1"
+                        />
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-xs text-stone-900">JazzCash Mobile Account</span>
+                            <span className="bg-rose-100 text-rose-800 font-bold text-[10px] px-2 py-0.5 rounded">
+                              Instant Transfer
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-stone-700 font-medium">
+                            <span>Title: <strong>{settings.jazzcashAccountTitle || 'DENON Cosmetics'}</strong></span>
+                            <span className="mx-2">•</span>
+                            <span>Number: <strong className="font-mono text-rose-800">{settings.jazzcashMobileNumber || '0300 5633597'}</strong></span>
+                          </div>
+                          {settings.jazzcashInstructions && (
+                            <p className="text-[11px] text-stone-500 italic mt-1">
+                              {settings.jazzcashInstructions}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      {settings.jazzcashQrCode && paymentMethod === 'JazzCash' && (
+                        <div className="shrink-0 text-center">
+                          <img
+                            src={settings.jazzcashQrCode}
+                            alt="JazzCash QR Code"
+                            className="w-20 h-20 object-contain rounded-lg border border-stone-300 bg-white shadow-xs p-1"
+                          />
+                          <span className="text-[9px] text-stone-500 font-bold block mt-1">Scan QR Code</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Bank Transfer */}
+                {settings.bankEnabled !== false && (
+                  <div
+                    onClick={() => setPaymentMethod('Bank Transfer')}
+                    className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                      paymentMethod === 'Bank Transfer'
+                        ? 'bg-sky-50/80 border-sky-600 shadow-2xs'
+                        : 'bg-stone-50 border-stone-200 hover:bg-stone-100/80'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        <input
+                          type="radio"
+                          name="payment"
+                          checked={paymentMethod === 'Bank Transfer'}
+                          onChange={() => setPaymentMethod('Bank Transfer')}
+                          className="accent-sky-800 mt-1"
+                        />
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-xs text-stone-900">Direct Bank Transfer ({settings.bankName || 'Meezan Bank'})</span>
+                            <span className="bg-sky-100 text-sky-800 font-bold text-[10px] px-2 py-0.5 rounded">
+                              Online Banking
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-stone-700 font-medium space-y-0.5">
+                            <p>Title: <strong>{settings.bankAccountTitle || 'DENON Cosmetics PK'}</strong></p>
+                            <p>Account No: <strong className="font-mono text-sky-900">{settings.bankAccountNumber || '01020304050607'}</strong></p>
+                            {settings.bankIban && <p>IBAN: <strong className="font-mono text-stone-800">{settings.bankIban}</strong></p>}
+                          </div>
+                          {settings.bankInstructions && (
+                            <p className="text-[11px] text-stone-500 italic mt-1">
+                              {settings.bankInstructions}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      {settings.bankQrCode && paymentMethod === 'Bank Transfer' && (
+                        <div className="shrink-0 text-center">
+                          <img
+                            src={settings.bankQrCode}
+                            alt="Bank Transfer QR Code"
+                            className="w-20 h-20 object-contain rounded-lg border border-stone-300 bg-white shadow-xs p-1"
+                          />
+                          <span className="text-[9px] text-stone-500 font-bold block mt-1">Bank QR</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

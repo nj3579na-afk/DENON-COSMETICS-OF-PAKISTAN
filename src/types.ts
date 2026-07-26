@@ -255,6 +255,32 @@ export interface AdminSettings {
   securityQuestionsJson?: string;
   activeSessionsJson?: string;
   trustedDevicesJson?: string;
+  adminPasswordHash?: string;
+  adminTwoFactorPin?: string;
+
+  // Payment Method Settings
+  easypaisaEnabled?: boolean;
+  easypaisaAccountTitle?: string;
+  easypaisaMobileNumber?: string;
+  easypaisaQrCode?: string;
+  easypaisaInstructions?: string;
+
+  jazzcashEnabled?: boolean;
+  jazzcashAccountTitle?: string;
+  jazzcashMobileNumber?: string;
+  jazzcashQrCode?: string;
+  jazzcashInstructions?: string;
+
+  bankEnabled?: boolean;
+  bankName?: string;
+  bankAccountTitle?: string;
+  bankAccountNumber?: string;
+  bankIban?: string;
+  bankQrCode?: string;
+  bankInstructions?: string;
+
+  codEnabled?: boolean;
+  codInstructions?: string;
 }
 
 export interface BlogPost {

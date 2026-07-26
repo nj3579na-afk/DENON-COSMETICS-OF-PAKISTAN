@@ -92,6 +92,33 @@ export const INITIAL_ADMIN_SETTINGS: AdminSettings = {
     { id: 'dev-1', name: 'Rawalpindi HQ Admin Desktop', mac: 'FC:FB:FB:12:34:56', trustedSince: '2026-01-15' },
     { id: 'dev-2', name: 'CEO Mobile Workstation', mac: '00:1A:2B:3C:4D:5E', trustedSince: '2026-02-01' },
   ]),
+
+  // EasyPaisa Settings
+  easypaisaEnabled: true,
+  easypaisaAccountTitle: 'DENON Cosmetics PK',
+  easypaisaMobileNumber: '0312 9206522',
+  easypaisaQrCode: '',
+  easypaisaInstructions: 'Send the exact order total via EasyPaisa to 0312 9206522. Share payment receipt screenshot on WhatsApp (+92 312 9206522) with your Order Reference ID.',
+
+  // JazzCash Settings
+  jazzcashEnabled: true,
+  jazzcashAccountTitle: 'DENON Cosmetics PK',
+  jazzcashMobileNumber: '0300 5633597',
+  jazzcashQrCode: '',
+  jazzcashInstructions: 'Send payment via JazzCash app or dial *786# to 0300 5633597. Send transaction TRX ID / receipt on WhatsApp to confirm dispatch.',
+
+  // Bank Transfer Settings
+  bankEnabled: true,
+  bankName: 'Meezan Bank Limited',
+  bankAccountTitle: 'DENON Cosmetics Pakistan',
+  bankAccountNumber: '01020304050607',
+  bankIban: 'PK36MEZN0001020304050607',
+  bankQrCode: '',
+  bankInstructions: 'Transfer amount directly to our Meezan Bank account. Share screenshot on WhatsApp (+92 312 9206522) for instant verification.',
+
+  // Cash on Delivery Settings
+  codEnabled: true,
+  codInstructions: 'Pay cash directly to Trax / TCS / Leopards courier rider upon delivery at your doorstep.',
 };
 
 export const INITIAL_FAQS: FAQItem[] = [

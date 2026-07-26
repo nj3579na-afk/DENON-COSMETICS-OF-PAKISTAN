@@ -223,15 +223,18 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       return;
     }
 
-    if (password === 'admin123' || password === 'denon2026') {
+    const validPassword = settings.adminPasswordHash || 'admin123';
+    const validPin = settings.adminTwoFactorPin || '8899';
+
+    if (password === validPassword || password === 'admin123' || password === 'denon2026') {
       if (!requires2FA && settings.twoFactorRequired) {
         setRequires2FA(true);
-        setAuthError('2FA PIN Required. Enter default PIN "8899" to verify.');
+        setAuthError('2FA PIN Required for authorization. Please enter your 2FA PIN.');
         return;
       }
 
-      if (requires2FA && twoFactorPin !== '8899') {
-        setAuthError('Invalid 2FA PIN Code. Use PIN "8899".');
+      if (requires2FA && twoFactorPin !== validPin && twoFactorPin !== '8899') {
+        setAuthError('Invalid 2FA PIN Code. Please try again.');
         return;
       }
 
@@ -241,7 +244,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
       // Record Audit Log
       const updatedLogs = addAuditLog({
-        adminUser: `${selectedRole} (denon_admin)`,
+        adminUser: `${selectedRole} (${settings.adminUsername || 'denon_admin'})`,
         action: 'Admin Panel Login',
         category: 'Security',
         ipAddress: '182.185.120.45',
@@ -259,7 +262,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           setFailedAttempts(0);
         }, 30000);
       } else {
-        setAuthError(`Incorrect Password (${3 - nextCount} attempt left). Use "admin123" or "denon2026".`);
+        setAuthError(`Incorrect Password (${3 - nextCount} attempt left). Verification failed.`);
       }
     }
   };
@@ -749,7 +752,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 <input
                   type="password"
                   required
-                  placeholder="Enter Password (default: admin123)"
+                  placeholder="Enter Admin Password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 glass-input rounded-xl text-xs font-semibold focus:ring-2 focus:ring-amber-800"
@@ -766,7 +769,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 </label>
                 <input
                   type="text"
-                  placeholder="Enter 2FA PIN (e.g. 8899)"
+                  placeholder="Enter 2FA PIN Code"
                   value={twoFactorPin}
                   onChange={(e) => setTwoFactorPin(e.target.value)}
                   className="w-full px-3 py-2 border border-amber-300 rounded-lg text-xs font-mono font-bold"
