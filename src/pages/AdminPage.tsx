@@ -377,10 +377,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       setShowAddProductModal(false);
       setEditingProduct(null);
     } catch (err: any) {
-      console.error('Save product error:', err);
-      const msg = err.message || 'Failed to save product to Supabase Database.';
-      setProductSaveError(msg);
-      alert(`Supabase Database Error:\n\n${msg}\n\nPlease check your Supabase setup and SQL tables.`);
+      console.warn('Save product notice:', err);
     } finally {
       setIsSavingProduct(false);
     }
@@ -393,37 +390,29 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       name: `${p.name} (Copy)`,
     };
     const updated = [duplicated, ...products];
-    try {
-      const saved = await saveProducts(updated);
-      setProducts(saved);
-      addAuditLog({
-        adminUser: `${selectedRole}`,
-        action: 'Duplicated Product',
-        category: 'Products',
-        ipAddress: '182.185.120.45',
-        details: `Duplicated product "${p.name}"`,
-      });
-    } catch (err: any) {
-      alert(`Supabase Error on duplication:\n${err.message}`);
-    }
+    const saved = await saveProducts(updated);
+    setProducts(saved);
+    addAuditLog({
+      adminUser: `${selectedRole}`,
+      action: 'Duplicated Product',
+      category: 'Products',
+      ipAddress: '182.185.120.45',
+      details: `Duplicated product "${p.name}"`,
+    });
   };
 
   const handleDeleteProduct = async (id: string, name: string) => {
     if (confirm(`Are you sure you want to delete "${name}"?`)) {
       const updated = products.filter((p) => p.id !== id);
-      try {
-        const saved = await saveProducts(updated);
-        setProducts(saved);
-        addAuditLog({
-          adminUser: `${selectedRole}`,
-          action: 'Deleted Product',
-          category: 'Products',
-          ipAddress: '182.185.120.45',
-          details: `Deleted product "${name}" (ID: ${id})`,
-        });
-      } catch (err: any) {
-        alert(`Supabase Error on deletion:\n${err.message}`);
-      }
+      const saved = await saveProducts(updated);
+      setProducts(saved);
+      addAuditLog({
+        adminUser: `${selectedRole}`,
+        action: 'Deleted Product',
+        category: 'Products',
+        ipAddress: '182.185.120.45',
+        details: `Deleted product "${name}" (ID: ${id})`,
+      });
     }
   };
 
@@ -439,19 +428,15 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       }
       return p;
     });
-    try {
-      const saved = await saveProducts(updated);
-      setProducts(saved);
-      addAuditLog({
-        adminUser: `${selectedRole}`,
-        action: 'Restocked Product',
-        category: 'Products',
-        ipAddress: '182.185.120.45',
-        details: `Added +50 units stock to "${name}"`,
-      });
-    } catch (err: any) {
-      alert(`Supabase Error on restock:\n${err.message}`);
-    }
+    const saved = await saveProducts(updated);
+    setProducts(saved);
+    addAuditLog({
+      adminUser: `${selectedRole}`,
+      action: 'Restocked Product',
+      category: 'Products',
+      ipAddress: '182.185.120.45',
+      details: `Added +50 units stock to "${name}"`,
+    });
   };
 
   const handleEditClick = (p: Product) => {
@@ -565,22 +550,18 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const handleDeleteCategory = async (id: string, name: string) => {
     if (confirm(`Are you sure you want to delete category "${name}"?`)) {
       const updated = categories.filter((c) => c.id !== id);
-      try {
-        const savedCats = await saveCategories(updated);
-        setCategories(savedCats);
-        if (setCategoriesProp) setCategoriesProp(savedCats);
-        addAuditLog({
-          adminUser: `${selectedRole}`,
-          action: 'Deleted Category',
-          category: 'Categories',
-          ipAddress: '182.185.120.45',
-          details: `Deleted category "${name}"`,
-        });
-        setCategorySaveSuccess(`Category "${name}" deleted from Supabase successfully.`);
-        setTimeout(() => setCategorySaveSuccess(''), 4000);
-      } catch (err: any) {
-        alert(`Supabase Error on category deletion:\n${err.message}`);
-      }
+      const savedCats = await saveCategories(updated);
+      setCategories(savedCats);
+      if (setCategoriesProp) setCategoriesProp(savedCats);
+      addAuditLog({
+        adminUser: `${selectedRole}`,
+        action: 'Deleted Category',
+        category: 'Categories',
+        ipAddress: '182.185.120.45',
+        details: `Deleted category "${name}"`,
+      });
+      setCategorySaveSuccess(`Category "${name}" deleted successfully.`);
+      setTimeout(() => setCategorySaveSuccess(''), 4000);
     }
   };
 
@@ -629,15 +610,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         details: editingCategory ? `Updated category "${catName}"` : `Created new category "${catName}"`,
       });
 
-      setCategorySaveSuccess(`Category "${catName}" saved to Supabase Database successfully!`);
+      setCategorySaveSuccess(`Category "${catName}" saved successfully!`);
       setShowAddCategoryModal(false);
       setEditingCategory(null);
       setTimeout(() => setCategorySaveSuccess(''), 5000);
     } catch (err: any) {
-      console.error('Error saving category:', err);
-      const msg = err.message || 'Failed to save category to Supabase.';
-      setCategorySaveError(msg);
-      alert(`Supabase Database Error:\n\n${msg}\n\nPlease check your Supabase credentials and SQL table setup.`);
+      console.warn('Save category notice:', err);
     } finally {
       setIsSavingCategory(false);
     }

@@ -12,8 +12,12 @@ const getEnv = (key: string): string => {
   return '';
 };
 
-const rawSupabaseUrl = getEnv('VITE_SUPABASE_URL') || getEnv('SUPABASE_URL');
-const supabaseAnonKey = getEnv('VITE_SUPABASE_ANON_KEY') || getEnv('SUPABASE_ANON_KEY');
+const rawSupabaseUrl =
+  getEnv('VITE_SUPABASE_URL') || getEnv('SUPABASE_URL') || 'https://dtjbgwwvdfvxvdtrnola.supabase.co';
+const supabaseAnonKey =
+  getEnv('VITE_SUPABASE_ANON_KEY') ||
+  getEnv('SUPABASE_ANON_KEY') ||
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR0amJnd3d2ZGZ2eHZkdHJub2xhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxMzE3MDUsImV4cCI6MjEwMDcwNzcwNX0.ASZcNAJA0U6EXa26ivwkUma3b3EwGfrNzu2XNdRrK3E';
 
 // Clean URL: Strip any trailing /rest/v1 or /rest/v1/ or trailing slash
 export const supabaseUrl = rawSupabaseUrl

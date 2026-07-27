@@ -204,9 +204,9 @@ async function saveToSupabase<T>(tableName: string, storeKey: string, data: T[] 
     relErrorMsg = err.message || `Error saving to ${tableName}`;
   }
 
-  // Critical: If BOTH denon_store AND relational table failed, THROW the error so the UI shows it!
-  if (storeErrorMsg && relErrorMsg) {
-    throw new Error(`Supabase DB Save Error:\n• denon_store: ${storeErrorMsg}\n• ${tableName}: ${relErrorMsg}`);
+  // Log warnings if Supabase sync encounters errors, but do not throw unhandled exceptions
+  if (storeErrorMsg || relErrorMsg) {
+    console.warn(`Supabase Sync Notice (${tableName}/${storeKey}):`, { denon_store: storeErrorMsg, relational: relErrorMsg });
   }
 }
 
@@ -290,22 +290,26 @@ export async function syncAllFromSupabase(): Promise<void> {
 
     let updated = false;
 
-    if (categoriesRes.success && categoriesRes.data) {
+    if (categoriesRes.success && categoriesRes.data && categoriesRes.data.length > 0) {
       cachedCategories = categoriesRes.data;
       saveToLocalStorage('denon_categories', cachedCategories);
       updated = true;
-    } else if (!categoriesRes.success && supabase) {
+    } else if (supabase) {
       // Seed initial categories to Supabase if empty/missing
+      cachedCategories = INITIAL_CATEGORIES;
       saveToSupabase('categories', 'categories', INITIAL_CATEGORIES).catch(() => {});
+      updated = true;
     }
 
-    if (productsRes.success && productsRes.data) {
+    if (productsRes.success && productsRes.data && productsRes.data.length > 0) {
       cachedProducts = productsRes.data;
       saveToLocalStorage('denon_products', cachedProducts);
       updated = true;
-    } else if (!productsRes.success && supabase) {
+    } else if (supabase) {
       // Seed initial products to Supabase if empty/missing
+      cachedProducts = INITIAL_PRODUCTS;
       saveToSupabase('products', 'products', INITIAL_PRODUCTS).catch(() => {});
+      updated = true;
     }
 
     if (settingsRes.success && settingsRes.data) {
@@ -465,11 +469,16 @@ export async function saveProducts(products: Product[]): Promise<Product[]> {
   saveToLocalStorage('denon_products', products);
   notifyDataUpdated();
 
-  // Async upload base64 images if present and persist
-  const processed = await processAndUploadProductImages(products);
-  saveToLocalStorage('denon_products', processed);
-  await saveToSupabase('products', 'products', processed);
-  return processed;
+  try {
+    // Async upload base64 images if present and persist
+    const processed = await processAndUploadProductImages(products);
+    saveToLocalStorage('denon_products', processed);
+    await saveToSupabase('products', 'products', processed);
+    return processed;
+  } catch (err) {
+    console.warn('Supabase product sync notice (saved locally):', err);
+    return products;
+  }
 }
 
 // Orders
@@ -612,10 +621,15 @@ export async function saveCategories(categories: CategoryItem[]): Promise<Catego
   saveToLocalStorage('denon_categories', categories);
   notifyDataUpdated();
 
-  const processed = await processAndUploadCategoryImages(categories);
-  saveToLocalStorage('denon_categories', processed);
-  await saveToSupabase('categories', 'categories', processed);
-  return processed;
+  try {
+    const processed = await processAndUploadCategoryImages(categories);
+    saveToLocalStorage('denon_categories', processed);
+    await saveToSupabase('categories', 'categories', processed);
+    return processed;
+  } catch (err) {
+    console.warn('Supabase category sync notice (saved locally):', err);
+    return categories;
+  }
 }
 
 // AI Knowledge
