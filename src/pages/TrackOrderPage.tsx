@@ -15,11 +15,14 @@ export const TrackOrderPage: React.FC = () => {
     const orders = getStoredOrders();
     const cleanQuery = query.trim().toUpperCase();
 
-    const found = orders.find(
-      (o) =>
-        o.id.toUpperCase() === cleanQuery ||
-        o.customer.phone.replace(/[^0-9]/g, '').includes(cleanQuery.replace(/[^0-9]/g, ''))
-    );
+    const found = orders.find((o) => {
+      const orderIdMatch = o.id ? o.id.toUpperCase() === cleanQuery : false;
+      const phoneStr = o.customer?.phone || '';
+      const cleanPhone = phoneStr.replace(/[^0-9]/g, '');
+      const cleanTargetPhone = cleanQuery.replace(/[^0-9]/g, '');
+      const phoneMatch = cleanTargetPhone.length > 0 && cleanPhone.includes(cleanTargetPhone);
+      return orderIdMatch || phoneMatch;
+    });
 
     setSearchedOrder(found || null);
     setHasSearched(true);

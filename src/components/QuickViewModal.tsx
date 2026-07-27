@@ -25,7 +25,8 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
   const whatsappMessage = encodeURIComponent(
     `Hello Denon Cosmetics! I would like to order:\n\n*Product:* ${product.name}\n*Quantity:* ${quantity}\n*Price:* PKR ${(product.salePrice * quantity).toLocaleString()}\n\nPlease deliver via Cash on Delivery in Pakistan.`
   );
-  const whatsappUrl = `https://wa.me/${whatsappNumber.replace(/[^0-9]/g, '')}?text=${whatsappMessage}`;
+  const cleanWhatsappNumber = (whatsappNumber || '').replace(/[^0-9]/g, '');
+  const whatsappUrl = `https://wa.me/${cleanWhatsappNumber}?text=${whatsappMessage}`;
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4">

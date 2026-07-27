@@ -59,7 +59,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       .map((i) => `• ${i.product.name} (x${i.quantity}) - PKR ${(i.product.salePrice * i.quantity).toLocaleString()}`)
       .join('\n');
     const msg = `Hello Denon Cosmetics! I would like to order the following items via Cash on Delivery:\n\n${itemsList}\n\n*Total Order Amount:* PKR ${grandTotal.toLocaleString()}\n*Shipping:* ${shippingFee === 0 ? 'FREE Shipping' : `PKR ${shippingFee}`}\n\nPlease confirm my order address.`;
-    return `https://wa.me/${whatsappNumber.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(msg)}`;
+    const cleanWhatsappNumber = (whatsappNumber || '').replace(/[^0-9]/g, '');
+    return `https://wa.me/${cleanWhatsappNumber}?text=${encodeURIComponent(msg)}`;
   };
 
   return (

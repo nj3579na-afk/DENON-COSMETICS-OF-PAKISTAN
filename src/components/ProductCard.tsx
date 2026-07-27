@@ -24,7 +24,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const whatsappMessage = encodeURIComponent(
     `Hello Denon Cosmetics! I would like to place an order for:\n\n*Product:* ${product.name}\n*Price:* PKR ${product.salePrice.toLocaleString()}\n*Category:* ${product.category}\n\nPlease confirm availability for Cash on Delivery in Pakistan.`
   );
-  const whatsappUrl = `https://wa.me/${whatsappNumber.replace(/[^0-9]/g, '')}?text=${whatsappMessage}`;
+  const cleanWhatsappNumber = (whatsappNumber || '').replace(/[^0-9]/g, '');
+  const whatsappUrl = `https://wa.me/${cleanWhatsappNumber}?text=${whatsappMessage}`;
 
   return (
     <div className="group relative glass-card rounded-2xl border border-white/70 shadow-xs hover:shadow-xl hover:bg-white/90 transition-all duration-300 flex flex-col overflow-hidden">

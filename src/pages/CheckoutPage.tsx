@@ -86,7 +86,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
       date: new Date().toISOString(),
       customer: {
         fullName,
-        email: email || `${phone.replace(/\s/g, '')}@customer.denon.pk`,
+        email: email || `${(phone || '').replace(/\s/g, '')}@customer.denon.pk`,
         phone,
         city,
         province,
@@ -111,7 +111,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
     const whatsappOrderText = encodeURIComponent(
       `Hello Denon Cosmetics! My Cash on Delivery order #${completedOrder.id} has been placed.\n\n*Customer:* ${completedOrder.customer.fullName}\n*Phone:* ${completedOrder.customer.phone}\n*City:* ${completedOrder.customer.city}\n*Total:* PKR ${completedOrder.total.toLocaleString()}\n\nPlease dispatch my order.`
     );
-    const whatsappOrderUrl = `https://wa.me/${settings.whatsappNumber.replace(/[^0-9]/g, '')}?text=${whatsappOrderText}`;
+    const cleanWhatsappNumber = (settings?.whatsappNumber || '').replace(/[^0-9]/g, '');
+    const whatsappOrderUrl = `https://wa.me/${cleanWhatsappNumber}?text=${whatsappOrderText}`;
 
     return (
       <div className="max-w-3xl mx-auto px-4 py-12 space-y-8 text-center animate-in fade-in duration-300">

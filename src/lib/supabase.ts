@@ -91,7 +91,7 @@ export async function uploadImageToSupabase(
     }
 
     const bucketName = 'denon-images';
-    const cleanPrefix = fileNamePrefix.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const cleanPrefix = (fileNamePrefix || 'image').replace(/[^a-zA-Z0-9_-]/g, '_');
     const filePath = `${cleanPrefix}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${extension}`;
 
     // Upload to Supabase Storage bucket

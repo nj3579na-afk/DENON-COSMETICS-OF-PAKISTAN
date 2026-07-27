@@ -175,6 +175,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [pIsFeatured, setPIsFeatured] = useState(true);
   const [pIsBestSeller, setPIsBestSeller] = useState(false);
   const [pIsNewArrival, setPIsNewArrival] = useState(false);
+  const [isSavingProduct, setIsSavingProduct] = useState(false);
+  const [productSaveError, setProductSaveError] = useState<string | null>(null);
 
   // Category Form State
   const [editingCategory, setEditingCategory] = useState<CategoryItem | null>(null);
@@ -182,6 +184,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [catDesc, setCatDesc] = useState('');
   const [catImage, setCatImage] = useState('');
   const [categorySaveSuccess, setCategorySaveSuccess] = useState('');
+  const [isSavingCategory, setIsSavingCategory] = useState(false);
+  const [categorySaveError, setCategorySaveError] = useState<string | null>(null);
 
   // Blog Form State
   const [blogTitle, setBlogTitle] = useState('');
@@ -294,122 +298,136 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const lowStockProducts = products.filter((p) => p.stockCount <= 10);
 
   // Save/Edit Product
-  const handleSaveProduct = (e: React.FormEvent) => {
+  const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    const discountPercent = Math.round(((pRetail - pSale) / pRetail) * 100);
-    const ingArray = pIngredients.split(',').map((s) => s.trim()).filter(Boolean);
-    const benArray = pBenefits.split(',').map((s) => s.trim()).filter(Boolean);
+    setIsSavingProduct(true);
+    setProductSaveError(null);
 
-    if (editingProduct) {
-      const updated = products.map((p) => {
-        if (p.id === editingProduct.id) {
-          return {
-            ...p,
-            name: pName,
-            brand: pBrand,
-            category: pCategory,
-            retailPrice: Number(pRetail),
-            salePrice: Number(pSale),
-            discountPercent,
-            image: pImage,
-            description: pDesc || 'Export quality beauty product by Denon Cosmetics.',
-            ingredients: ingArray,
-            benefits: benArray,
-            howToUse: pHowToUse,
-            suitableSkinType: pSkinType,
-            warnings: pWarnings,
-            stockCount: Number(pStock),
-            stockStatus: Number(pStock) > 0 ? (Number(pStock) <= 10 ? 'Low Stock' : 'In Stock') : 'Out of Stock',
-            isFeatured: pIsFeatured,
-            isBestSeller: pIsBestSeller,
-            isNewArrival: pIsNewArrival,
-          } as Product;
-        }
-        return p;
-      });
-      setProducts(updated);
-      saveProducts(updated);
+    try {
+      const discountPercent = Math.round(((pRetail - pSale) / pRetail) * 100);
+      const ingArray = pIngredients.split(',').map((s) => s.trim()).filter(Boolean);
+      const benArray = pBenefits.split(',').map((s) => s.trim()).filter(Boolean);
+
+      let updated: Product[];
+      if (editingProduct) {
+        updated = products.map((p) => {
+          if (p.id === editingProduct.id) {
+            return {
+              ...p,
+              name: pName,
+              brand: pBrand,
+              category: pCategory,
+              retailPrice: Number(pRetail),
+              salePrice: Number(pSale),
+              discountPercent,
+              image: pImage,
+              description: pDesc || 'Export quality beauty product by Denon Cosmetics.',
+              ingredients: ingArray,
+              benefits: benArray,
+              howToUse: pHowToUse,
+              suitableSkinType: pSkinType,
+              warnings: pWarnings,
+              stockCount: Number(pStock),
+              stockStatus: Number(pStock) > 0 ? (Number(pStock) <= 10 ? 'Low Stock' : 'In Stock') : 'Out of Stock',
+              isFeatured: pIsFeatured,
+              isBestSeller: pIsBestSeller,
+              isNewArrival: pIsNewArrival,
+            } as Product;
+          }
+          return p;
+        });
+      } else {
+        const newP: Product = {
+          id: `denon-prod-${Date.now()}`,
+          name: pName,
+          brand: pBrand,
+          category: pCategory,
+          retailPrice: Number(pRetail),
+          salePrice: Number(pSale),
+          discountPercent,
+          image: pImage,
+          description: pDesc || 'Export quality beauty product by Denon Cosmetics.',
+          benefits: benArray,
+          ingredients: ingArray,
+          howToUse: pHowToUse,
+          suitableSkinType: pSkinType,
+          warnings: pWarnings,
+          stockCount: Number(pStock),
+          stockStatus: Number(pStock) > 0 ? 'In Stock' : 'Out of Stock',
+          rating: 5.0,
+          reviewCount: 1,
+          isFeatured: pIsFeatured,
+          isBestSeller: pIsBestSeller,
+          isNewArrival: pIsNewArrival,
+        };
+        updated = [newP, ...products];
+      }
+
+      const savedProducts = await saveProducts(updated);
+      setProducts(savedProducts);
+
       addAuditLog({
         adminUser: `${selectedRole}`,
-        action: 'Updated Product',
+        action: editingProduct ? 'Updated Product' : 'Created Product',
         category: 'Products',
         ipAddress: '182.185.120.45',
-        details: `Edited product "${pName}" (ID: ${editingProduct.id})`,
+        details: editingProduct ? `Edited product "${pName}" (ID: ${editingProduct.id})` : `Added new product "${pName}"`,
       });
-    } else {
-      const newP: Product = {
-        id: `denon-prod-${Date.now()}`,
-        name: pName,
-        brand: pBrand,
-        category: pCategory,
-        retailPrice: Number(pRetail),
-        salePrice: Number(pSale),
-        discountPercent,
-        image: pImage,
-        description: pDesc || 'Export quality beauty product by Denon Cosmetics.',
-        benefits: benArray,
-        ingredients: ingArray,
-        howToUse: pHowToUse,
-        suitableSkinType: pSkinType,
-        warnings: pWarnings,
-        stockCount: Number(pStock),
-        stockStatus: Number(pStock) > 0 ? 'In Stock' : 'Out of Stock',
-        rating: 5.0,
-        reviewCount: 1,
-        isFeatured: pIsFeatured,
-        isBestSeller: pIsBestSeller,
-        isNewArrival: pIsNewArrival,
-      };
-      const updated = [newP, ...products];
-      setProducts(updated);
-      saveProducts(updated);
-      addAuditLog({
-        adminUser: `${selectedRole}`,
-        action: 'Created Product',
-        category: 'Products',
-        ipAddress: '182.185.120.45',
-        details: `Added new product "${pName}"`,
-      });
+
+      setShowAddProductModal(false);
+      setEditingProduct(null);
+    } catch (err: any) {
+      console.error('Save product error:', err);
+      const msg = err.message || 'Failed to save product to Supabase Database.';
+      setProductSaveError(msg);
+      alert(`Supabase Database Error:\n\n${msg}\n\nPlease check your Supabase setup and SQL tables.`);
+    } finally {
+      setIsSavingProduct(false);
     }
-
-    setShowAddProductModal(false);
-    setEditingProduct(null);
   };
 
-  const handleDuplicateProduct = (p: Product) => {
+  const handleDuplicateProduct = async (p: Product) => {
     const duplicated: Product = {
       ...p,
       id: `denon-prod-${Date.now()}`,
       name: `${p.name} (Copy)`,
     };
     const updated = [duplicated, ...products];
-    setProducts(updated);
-    saveProducts(updated);
-    addAuditLog({
-      adminUser: `${selectedRole}`,
-      action: 'Duplicated Product',
-      category: 'Products',
-      ipAddress: '182.185.120.45',
-      details: `Duplicated product "${p.name}"`,
-    });
-  };
-
-  const handleDeleteProduct = (id: string, name: string) => {
-    if (confirm(`Are you sure you want to delete "${name}"?`)) {
-      const updated = products.filter((p) => p.id !== id);
-      setProducts(updated);
-      saveProducts(updated);
+    try {
+      const saved = await saveProducts(updated);
+      setProducts(saved);
       addAuditLog({
         adminUser: `${selectedRole}`,
-        action: 'Deleted Product',
+        action: 'Duplicated Product',
         category: 'Products',
         ipAddress: '182.185.120.45',
-        details: `Deleted product "${name}" (ID: ${id})`,
+        details: `Duplicated product "${p.name}"`,
       });
+    } catch (err: any) {
+      alert(`Supabase Error on duplication:\n${err.message}`);
     }
   };
 
-  const handleRestockProduct = (id: string, name: string) => {
+  const handleDeleteProduct = async (id: string, name: string) => {
+    if (confirm(`Are you sure you want to delete "${name}"?`)) {
+      const updated = products.filter((p) => p.id !== id);
+      try {
+        const saved = await saveProducts(updated);
+        setProducts(saved);
+        addAuditLog({
+          adminUser: `${selectedRole}`,
+          action: 'Deleted Product',
+          category: 'Products',
+          ipAddress: '182.185.120.45',
+          details: `Deleted product "${name}" (ID: ${id})`,
+        });
+      } catch (err: any) {
+        alert(`Supabase Error on deletion:\n${err.message}`);
+      }
+    }
+  };
+
+  const handleRestockProduct = async (id: string, name: string) => {
     const updated = products.map((p) => {
       if (p.id === id) {
         const newCount = p.stockCount + 50;
@@ -421,15 +439,19 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       }
       return p;
     });
-    setProducts(updated);
-    saveProducts(updated);
-    addAuditLog({
-      adminUser: `${selectedRole}`,
-      action: 'Restocked Product',
-      category: 'Products',
-      ipAddress: '182.185.120.45',
-      details: `Added +50 units stock to "${name}"`,
-    });
+    try {
+      const saved = await saveProducts(updated);
+      setProducts(saved);
+      addAuditLog({
+        adminUser: `${selectedRole}`,
+        action: 'Restocked Product',
+        category: 'Products',
+        ipAddress: '182.185.120.45',
+        details: `Added +50 units stock to "${name}"`,
+      });
+    } catch (err: any) {
+      alert(`Supabase Error on restock:\n${err.message}`);
+    }
   };
 
   const handleEditClick = (p: Product) => {
@@ -540,77 +562,85 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     setShowAddCategoryModal(true);
   };
 
-  const handleDeleteCategory = (id: string, name: string) => {
+  const handleDeleteCategory = async (id: string, name: string) => {
     if (confirm(`Are you sure you want to delete category "${name}"?`)) {
       const updated = categories.filter((c) => c.id !== id);
-      setCategories(updated);
-      saveCategories(updated);
-      if (setCategoriesProp) setCategoriesProp(updated);
-      addAuditLog({
-        adminUser: `${selectedRole}`,
-        action: 'Deleted Category',
-        category: 'Categories',
-        ipAddress: '182.185.120.45',
-        details: `Deleted category "${name}"`,
-      });
-      setCategorySaveSuccess(`Category "${name}" deleted successfully.`);
-      setTimeout(() => setCategorySaveSuccess(''), 4000);
+      try {
+        const savedCats = await saveCategories(updated);
+        setCategories(savedCats);
+        if (setCategoriesProp) setCategoriesProp(savedCats);
+        addAuditLog({
+          adminUser: `${selectedRole}`,
+          action: 'Deleted Category',
+          category: 'Categories',
+          ipAddress: '182.185.120.45',
+          details: `Deleted category "${name}"`,
+        });
+        setCategorySaveSuccess(`Category "${name}" deleted from Supabase successfully.`);
+        setTimeout(() => setCategorySaveSuccess(''), 4000);
+      } catch (err: any) {
+        alert(`Supabase Error on category deletion:\n${err.message}`);
+      }
     }
   };
 
-  const handleAddCategory = (e: React.FormEvent) => {
+  const handleAddCategory = async (e: React.FormEvent) => {
     e.preventDefault();
-    const finalImage = catImage || 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&q=80&w=400';
+    setIsSavingCategory(true);
+    setCategorySaveError(null);
 
-    let updated: CategoryItem[];
-    if (editingCategory) {
-      updated = categories.map((c) =>
-        c.id === editingCategory.id
-          ? {
-              ...c,
-              name: catName,
-              description: catDesc || 'Premium beauty category by Denon Cosmetics.',
-              image: finalImage,
-            }
-          : c
-      );
-      setCategories(updated);
-      saveCategories(updated);
-      if (setCategoriesProp) setCategoriesProp(updated);
+    try {
+      const finalImage = catImage || 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&q=80&w=400';
+
+      let updated: CategoryItem[];
+      if (editingCategory) {
+        updated = categories.map((c) =>
+          c.id === editingCategory.id
+            ? {
+                ...c,
+                name: catName,
+                description: catDesc || 'Premium beauty category by Denon Cosmetics.',
+                image: finalImage,
+              }
+            : c
+        );
+      } else {
+        const newCat: CategoryItem = {
+          id: `cat-${Date.now()}`,
+          name: catName,
+          description: catDesc || 'Premium beauty category by Denon Cosmetics.',
+          image: finalImage,
+          productCount: 0,
+          isActive: true,
+          sortOrder: categories.length + 1,
+        };
+        updated = [...categories, newCat];
+      }
+
+      const savedCats = await saveCategories(updated);
+      setCategories(savedCats);
+      if (setCategoriesProp) setCategoriesProp(savedCats);
+
       addAuditLog({
         adminUser: `${selectedRole}`,
-        action: 'Updated Category Image',
+        action: editingCategory ? 'Updated Category' : 'Created Category',
         category: 'Categories',
         ipAddress: '182.185.120.45',
-        details: `Updated image for category "${catName}"`,
+        details: editingCategory ? `Updated category "${catName}"` : `Created new category "${catName}"`,
       });
-      setCategorySaveSuccess(`Category "${catName}" image and information updated successfully! Visible on Home Page & Categories.`);
+
+      setCategorySaveSuccess(`Category "${catName}" saved to Supabase Database successfully!`);
+      setShowAddCategoryModal(false);
       setEditingCategory(null);
-    } else {
-      const newCat: CategoryItem = {
-        id: `cat-${Date.now()}`,
-        name: catName,
-        description: catDesc || 'Premium beauty category by Denon Cosmetics.',
-        image: finalImage,
-        productCount: 0,
-        isActive: true,
-        sortOrder: categories.length + 1,
-      };
-      updated = [...categories, newCat];
-      setCategories(updated);
-      saveCategories(updated);
-      if (setCategoriesProp) setCategoriesProp(updated);
-      addAuditLog({
-        adminUser: `${selectedRole}`,
-        action: 'Created Category',
-        category: 'Categories',
-        ipAddress: '182.185.120.45',
-        details: `Created new category "${catName}"`,
-      });
-      setCategorySaveSuccess(`Category "${catName}" created successfully! Visible on Home Page & Categories.`);
+      setTimeout(() => setCategorySaveSuccess(''), 5000);
+    } catch (err: any) {
+      console.error('Error saving category:', err);
+      const msg = err.message || 'Failed to save category to Supabase.';
+      setCategorySaveError(msg);
+      alert(`Supabase Database Error:\n\n${msg}\n\nPlease check your Supabase credentials and SQL table setup.`);
+    } finally {
+      setIsSavingCategory(false);
     }
-    setShowAddCategoryModal(false);
-    setTimeout(() => setCategorySaveSuccess(''), 5000);
   };
 
   // Add Blog
@@ -619,7 +649,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     const newBlog: BlogPost = {
       id: `blog-${Date.now()}`,
       title: blogTitle,
-      slug: blogTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      slug: (blogTitle || '').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
       category: blogCategory,
       excerpt: blogExcerpt,
       content: blogContent,
@@ -2337,19 +2367,38 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 </label>
               </div>
 
+              {productSaveError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl flex items-start gap-2 text-xs font-semibold">
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold">Supabase Error: </span>
+                    <span>{productSaveError}</span>
+                  </div>
+                </div>
+              )}
+
               <div className="flex gap-2 pt-4">
                 <button
                   type="button"
+                  disabled={isSavingProduct}
                   onClick={() => setShowAddProductModal(false)}
-                  className="w-full py-2.5 bg-stone-100 text-stone-800 font-bold rounded-xl"
+                  className="w-full py-2.5 bg-stone-100 text-stone-800 font-bold rounded-xl hover:bg-stone-200 disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="w-full py-2.5 bg-stone-900 text-amber-200 font-bold rounded-xl shadow-md"
+                  disabled={isSavingProduct}
+                  className="w-full py-2.5 bg-stone-900 text-amber-200 font-bold rounded-xl shadow-md hover:bg-stone-800 disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  Save Product
+                  {isSavingProduct ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Saving to Supabase...</span>
+                    </>
+                  ) : (
+                    <span>Save Product</span>
+                  )}
                 </button>
               </div>
             </form>
@@ -2395,16 +2444,38 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 previewHeightClass="h-44"
               />
 
+              {categorySaveError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl flex items-start gap-2 text-xs font-semibold">
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold">Supabase Error: </span>
+                    <span>{categorySaveError}</span>
+                  </div>
+                </div>
+              )}
+
               <div className="flex gap-2 pt-2">
                 <button
                   type="button"
+                  disabled={isSavingCategory}
                   onClick={() => setShowAddCategoryModal(false)}
-                  className="w-full py-2.5 bg-stone-100 font-bold text-stone-800 rounded-xl hover:bg-stone-200"
+                  className="w-full py-2.5 bg-stone-100 font-bold text-stone-800 rounded-xl hover:bg-stone-200 disabled:opacity-50"
                 >
                   Cancel
                 </button>
-                <button type="submit" className="w-full py-2.5 bg-stone-900 text-amber-200 font-bold rounded-xl hover:bg-stone-800 shadow-md">
-                  {editingCategory ? 'Update Category' : 'Save Category'}
+                <button
+                  type="submit"
+                  disabled={isSavingCategory}
+                  className="w-full py-2.5 bg-stone-900 text-amber-200 font-bold rounded-xl hover:bg-stone-800 shadow-md disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isSavingCategory ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Saving to Supabase...</span>
+                    </>
+                  ) : (
+                    <span>{editingCategory ? 'Update Category' : 'Save Category'}</span>
+                  )}
                 </button>
               </div>
             </form>

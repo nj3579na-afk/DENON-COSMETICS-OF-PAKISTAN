@@ -75,34 +75,119 @@ function saveToLocalStorage(key: string, value: any) {
   }
 }
 
+// Supabase Mappers
+function supabaseRowToProduct(row: any): Product {
+  return {
+    id: String(row.id),
+    name: row.name || 'Untitled Product',
+    brand: row.brand || 'DENON®',
+    category: row.category || 'Face Wash',
+    retailPrice: Number(row.retailPrice ?? row.originalPrice ?? row.price ?? 0),
+    salePrice: Number(row.salePrice ?? row.price ?? 0),
+    discountPercent: Number(row.discountPercent ?? 0),
+    image: row.image || 'https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&q=80&w=400',
+    images: Array.isArray(row.images) ? row.images : [],
+    description: row.description || '',
+    benefits: Array.isArray(row.benefits) ? row.benefits : [],
+    ingredients: Array.isArray(row.ingredients) ? row.ingredients : [],
+    howToUse: row.howToUse || '',
+    suitableSkinType: row.suitableSkinType || 'For All Skin Types',
+    warnings: row.warnings || '',
+    volumeOrWeight: row.volumeOrWeight || row.volume || '',
+    stockStatus: row.stockStatus || (row.inStock === false ? 'Out of Stock' : 'In Stock'),
+    stockCount: Number(row.stockCount ?? (row.inStock === false ? 0 : 50)),
+    rating: Number(row.rating ?? 5.0),
+    reviewCount: Number(row.reviewCount ?? row.reviewsCount ?? 0),
+    isFeatured: Boolean(row.isFeatured),
+    isBestSeller: Boolean(row.isBestSeller ?? row.isBestseller),
+    isNewArrival: Boolean(row.isNewArrival),
+  };
+}
+
+function supabaseRowToCategory(row: any): CategoryItem {
+  return {
+    id: String(row.id),
+    name: row.name || 'Face Wash',
+    description: row.description || '',
+    image: row.image || '',
+    productCount: Number(row.productCount ?? 0),
+    isActive: row.isActive !== false,
+    sortOrder: Number(row.sortOrder ?? 1),
+  };
+}
+
 // Supabase Save Helper
 async function saveToSupabase<T>(tableName: string, storeKey: string, data: T[] | T): Promise<void> {
-  if (!supabase) return;
+  if (!supabase) {
+    throw new Error('Supabase client is not initialized. Check your Supabase configuration.');
+  }
+
+  let storeErrorMsg: string | null = null;
+  let relErrorMsg: string | null = null;
+
+  // 1. Save to denon_store key-value table
   try {
-    // 1. Save to denon_store key-value table
     const { error: storeErr } = await supabase
       .from('denon_store')
       .upsert({ key: storeKey, value: data, updated_at: new Date().toISOString() }, { onConflict: 'key' });
 
     if (storeErr) {
+      storeErrorMsg = storeErr.message;
       console.warn(`denon_store upsert notice (${storeKey}):`, storeErr.message);
     }
+  } catch (err: any) {
+    storeErrorMsg = err.message || 'Error saving to denon_store';
+  }
 
-    // 2. Also try upserting to relational table
+  // 2. Also try upserting to relational table
+  try {
     if (Array.isArray(data)) {
-      if (data.length > 0) {
-        const { error: relErr } = await supabase.from(tableName).upsert(data as any, { onConflict: 'id' });
+      let rowsToUpsert: any[] = data;
+      if (tableName === 'products') {
+        rowsToUpsert = data.map((p: any) => ({
+          id: String(p.id),
+          name: String(p.name || ''),
+          description: String(p.description || ''),
+          price: Number(p.salePrice ?? p.price ?? 0),
+          originalPrice: Number(p.retailPrice ?? p.originalPrice ?? 0),
+          image: String(p.image || ''),
+          category: String(p.category || 'Face Wash'),
+          inStock: p.stockStatus !== 'Out of Stock' && (p.stockCount === undefined || Number(p.stockCount) > 0),
+          rating: Number(p.rating ?? 5.0),
+          reviewsCount: Number(p.reviewCount ?? p.reviewsCount ?? 0),
+          isBestseller: Boolean(p.isBestSeller ?? p.isBestseller),
+          isFeatured: Boolean(p.isFeatured),
+          volume: String(p.volumeOrWeight ?? p.volume ?? ''),
+          ingredients: Array.isArray(p.ingredients) ? p.ingredients : [],
+          benefits: Array.isArray(p.benefits) ? p.benefits : [],
+          howToUse: String(p.howToUse || ''),
+        }));
+      } else if (tableName === 'categories') {
+        rowsToUpsert = data.map((c: any) => ({
+          id: String(c.id),
+          name: String(c.name || ''),
+          description: String(c.description || ''),
+          image: String(c.image || ''),
+          productCount: Number(c.productCount ?? 0),
+          isActive: c.isActive !== false,
+          sortOrder: Number(c.sortOrder ?? 1),
+        }));
+      }
+
+      if (rowsToUpsert.length > 0) {
+        const { error: relErr } = await supabase.from(tableName).upsert(rowsToUpsert as any, { onConflict: 'id' });
         if (relErr) {
+          relErrorMsg = relErr.message;
           console.warn(`Relational table upsert notice (${tableName}):`, relErr.message);
         }
       }
 
-      // Handle deletions for relational tables (e.g. products, categories)
+      // Handle deletions for relational tables
       if (tableName === 'products' || tableName === 'categories') {
         const { data: currentRows } = await supabase.from(tableName).select('id');
         if (currentRows && currentRows.length > 0) {
-          const currentIdsInApp = new Set(data.map((item: any) => item.id));
-          const idsToDelete = currentRows.map((r: any) => r.id).filter((id: string) => !currentIdsInApp.has(id));
+          const currentIdsInApp = new Set(data.map((item: any) => String(item.id)));
+          const idsToDelete = currentRows.map((r: any) => String(r.id)).filter((id: string) => !currentIdsInApp.has(id));
           if (idsToDelete.length > 0) {
             await supabase.from(tableName).delete().in('id', idsToDelete);
           }
@@ -110,10 +195,18 @@ async function saveToSupabase<T>(tableName: string, storeKey: string, data: T[] 
       }
     } else {
       const row = { id: (data as any).id || 'default', ...(data as object) };
-      await supabase.from(tableName).upsert(row as any, { onConflict: 'id' });
+      const { error: relErr } = await supabase.from(tableName).upsert(row as any, { onConflict: 'id' });
+      if (relErr) {
+        relErrorMsg = relErr.message;
+      }
     }
-  } catch (err) {
-    console.warn(`Supabase save notice for ${tableName}/${storeKey}:`, err);
+  } catch (err: any) {
+    relErrorMsg = err.message || `Error saving to ${tableName}`;
+  }
+
+  // Critical: If BOTH denon_store AND relational table failed, THROW the error so the UI shows it!
+  if (storeErrorMsg && relErrorMsg) {
+    throw new Error(`Supabase DB Save Error:\n• denon_store: ${storeErrorMsg}\n• ${tableName}: ${relErrorMsg}`);
   }
 }
 
@@ -134,17 +227,30 @@ async function fetchFromSupabase<T>(tableName: string, storeKey: string): Promis
       .maybeSingle();
 
     if (!storeError && storeData && storeData.value !== undefined && storeData.value !== null) {
-      return { data: storeData.value as T, success: true };
+      const val = storeData.value;
+      if (tableName === 'products' && Array.isArray(val)) {
+        return { data: val.map(supabaseRowToProduct) as unknown as T, success: true };
+      }
+      if (tableName === 'categories' && Array.isArray(val)) {
+        return { data: val.map(supabaseRowToCategory) as unknown as T, success: true };
+      }
+      return { data: val as T, success: true };
     }
 
     // 2. Check relational table
     const { data, error } = await supabase.from(tableName).select('*');
     if (!error && data && data.length > 0) {
+      if (tableName === 'products') {
+        return { data: data.map(supabaseRowToProduct) as unknown as T, success: true };
+      }
+      if (tableName === 'categories') {
+        return { data: data.map(supabaseRowToCategory) as unknown as T, success: true };
+      }
       return { data: data as unknown as T, success: true };
     }
 
     if (!error && data && data.length === 0) {
-      return { data: null, success: false };
+      return { data: [] as unknown as T, success: true };
     }
   } catch (err) {
     console.warn(`Supabase fetch notice for ${tableName}/${storeKey}:`, err);
@@ -188,12 +294,20 @@ export async function syncAllFromSupabase(): Promise<void> {
       cachedCategories = categoriesRes.data;
       saveToLocalStorage('denon_categories', cachedCategories);
       updated = true;
+    } else if (!categoriesRes.success && supabase) {
+      // Seed initial categories to Supabase if empty/missing
+      saveToSupabase('categories', 'categories', INITIAL_CATEGORIES).catch(() => {});
     }
+
     if (productsRes.success && productsRes.data) {
       cachedProducts = productsRes.data;
       saveToLocalStorage('denon_products', cachedProducts);
       updated = true;
+    } else if (!productsRes.success && supabase) {
+      // Seed initial products to Supabase if empty/missing
+      saveToSupabase('products', 'products', INITIAL_PRODUCTS).catch(() => {});
     }
+
     if (settingsRes.success && settingsRes.data) {
       cachedSettings = settingsRes.data;
       saveToLocalStorage('denon_settings', cachedSettings);
@@ -346,16 +460,16 @@ export async function processAndUploadProductImages(products: Product[]): Promis
   return updated;
 }
 
-export function saveProducts(products: Product[]): void {
+export async function saveProducts(products: Product[]): Promise<Product[]> {
   cachedProducts = products;
   saveToLocalStorage('denon_products', products);
   notifyDataUpdated();
 
   // Async upload base64 images if present and persist
-  processAndUploadProductImages(products).then((processed) => {
-    saveToLocalStorage('denon_products', processed);
-    saveToSupabase('products', 'products', processed);
-  });
+  const processed = await processAndUploadProductImages(products);
+  saveToLocalStorage('denon_products', processed);
+  await saveToSupabase('products', 'products', processed);
+  return processed;
 }
 
 // Orders
@@ -493,15 +607,15 @@ export async function processAndUploadCategoryImages(categories: CategoryItem[])
   return updated;
 }
 
-export function saveCategories(categories: CategoryItem[]): void {
+export async function saveCategories(categories: CategoryItem[]): Promise<CategoryItem[]> {
   cachedCategories = categories;
   saveToLocalStorage('denon_categories', categories);
   notifyDataUpdated();
 
-  processAndUploadCategoryImages(categories).then((processed) => {
-    saveToLocalStorage('denon_categories', processed);
-    saveToSupabase('categories', 'categories', processed);
-  });
+  const processed = await processAndUploadCategoryImages(categories);
+  saveToLocalStorage('denon_categories', processed);
+  await saveToSupabase('categories', 'categories', processed);
+  return processed;
 }
 
 // AI Knowledge
