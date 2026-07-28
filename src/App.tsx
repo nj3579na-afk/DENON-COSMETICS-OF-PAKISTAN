@@ -33,7 +33,22 @@ export function App() {
   const [categories, setCategories] = useState<CategoryItem[]>(() => getStoredCategories());
   const [settings, setSettings] = useState<AdminSettings>(getAdminSettings());
 
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [cartItems, setCartItems] = useState<CartItem[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('denon_cart_items');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            return parsed.filter((item) => item && item.product && item.product.id);
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to parse saved cart items:', e);
+      }
+    }
+    return [];
+  });
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [appliedDiscount, setAppliedDiscount] = useState(0);
 
@@ -43,6 +58,17 @@ export function App() {
   // Search Modal
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [globalSearch, setGlobalSearch] = useState('');
+
+  // Persist cart items to localStorage on change
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('denon_cart_items', JSON.stringify(cartItems));
+      } catch (e) {
+        console.warn('Failed to save cart items:', e);
+      }
+    }
+  }, [cartItems]);
 
   useEffect(() => {
     initializeStorage();
@@ -81,11 +107,15 @@ export function App() {
   }, [activeTab]);
 
   const handleAddToCart = (product: Product, quantity: number = 1) => {
+    if (!product || !product.id) return;
     setCartItems((prev) => {
-      const existingIndex = prev.findIndex((item) => item.product.id === product.id);
+      const existingIndex = prev.findIndex((item) => item.product && item.product.id === product.id);
       if (existingIndex > -1) {
         const updated = [...prev];
-        updated[existingIndex].quantity += quantity;
+        updated[existingIndex] = {
+          ...updated[existingIndex],
+          quantity: updated[existingIndex].quantity + quantity,
+        };
         return updated;
       }
       return [...prev, { product, quantity }];
@@ -94,7 +124,20 @@ export function App() {
   };
 
   const handleBuyNow = (product: Product, quantity: number = 1) => {
-    handleAddToCart(product, quantity);
+    if (!product || !product.id) return;
+    setCartItems((prev) => {
+      const existingIndex = prev.findIndex((item) => item.product && item.product.id === product.id);
+      if (existingIndex > -1) {
+        const updated = [...prev];
+        updated[existingIndex] = {
+          ...updated[existingIndex],
+          quantity: updated[existingIndex].quantity + quantity,
+        };
+        return updated;
+      }
+      return [...prev, { product, quantity }];
+    });
+    setIsCartOpen(false);
     setActiveTab('checkout');
   };
 

@@ -138,8 +138,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           <div className="grid grid-cols-2 gap-2">
             <button
               id={`add-cart-btn-${product.id}`}
-              onClick={() => onAddToCart(product)}
-              className="w-full py-2 px-3 bg-stone-900 text-white text-xs font-bold rounded-lg hover:bg-stone-800 transition-colors flex items-center justify-center gap-1.5 shadow-2xs"
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddToCart(product);
+              }}
+              className="w-full py-2 px-3 bg-stone-900 text-white text-xs font-bold rounded-lg hover:bg-stone-800 transition-colors flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
             >
               <ShoppingBag className="w-3.5 h-3.5 text-amber-300" />
               Add to Bag
@@ -147,8 +150,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
             <button
               id={`buy-now-btn-${product.id}`}
-              onClick={() => onBuyNow(product)}
-              className="w-full py-2 px-3 bg-amber-700 text-white text-xs font-bold rounded-lg hover:bg-amber-800 transition-colors flex items-center justify-center gap-1 shadow-2xs"
+              onClick={(e) => {
+                e.stopPropagation();
+                onBuyNow(product);
+              }}
+              className="w-full py-2 px-3 bg-amber-700 text-white text-xs font-bold rounded-lg hover:bg-amber-800 transition-colors flex items-center justify-center gap-1 shadow-2xs cursor-pointer"
             >
               Buy Now
             </button>

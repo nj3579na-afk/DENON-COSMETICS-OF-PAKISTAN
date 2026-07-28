@@ -48,10 +48,15 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
     }
   }, []);
 
-  const subtotal = cartItems.reduce((acc, item) => acc + item.product.salePrice * item.quantity, 0);
+  const subtotal = (cartItems || []).reduce(
+    (acc, item) => acc + (item?.product?.salePrice ?? 0) * (item?.quantity ?? 1),
+    0
+  );
   const amountAfterDiscount = subtotal - discountAmount;
-  const isFreeShipping = amountAfterDiscount >= settings.freeShippingThreshold || cartItems.length === 0;
-  const shippingFee = isFreeShipping ? 0 : settings.standardShippingFee;
+  const freeShippingThreshold = settings?.freeShippingThreshold ?? 2000;
+  const standardShippingFee = settings?.standardShippingFee ?? 199;
+  const isFreeShipping = amountAfterDiscount >= freeShippingThreshold || !cartItems || cartItems.length === 0;
+  const shippingFee = isFreeShipping ? 0 : standardShippingFee;
   const grandTotal = amountAfterDiscount + shippingFee;
 
   const pakistaniCities = [
@@ -177,6 +182,29 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
             </button>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  if (!cartItems || cartItems.length === 0) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-16 text-center space-y-6">
+        <div className="w-20 h-20 rounded-full bg-amber-50 text-amber-800 flex items-center justify-center mx-auto border border-amber-200 shadow-inner">
+          <Truck className="w-10 h-10" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="font-serif text-2xl font-bold text-stone-900">Your Shopping Bag is Empty</h2>
+          <p className="text-xs text-stone-600 max-w-md mx-auto leading-relaxed">
+            You haven't added any skincare products to your bag yet. Browse our export-quality Rice Water face washes, beauty creams, and serums to get started.
+          </p>
+        </div>
+        <button
+          id="checkout-empty-shop-now"
+          onClick={() => setActiveTab('shop')}
+          className="px-8 py-3.5 bg-stone-900 text-amber-200 font-bold text-xs uppercase tracking-wider rounded-xl hover:bg-stone-800 transition-colors shadow-md"
+        >
+          Browse Skincare Collection
+        </button>
       </div>
     );
   }
@@ -457,7 +485,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                   </div>
                 )}
 
-                {/* Bank Transfer */}
+                {/* Bank Transfer & Card Payment */}
                 {settings.bankEnabled !== false && (
                   <div
                     onClick={() => setPaymentMethod('Bank Transfer')}
@@ -477,22 +505,22 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                           className="accent-sky-800 mt-1"
                         />
                         <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-xs text-stone-900">Direct Bank Transfer ({settings.bankName || 'Meezan Bank'})</span>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-bold text-xs text-stone-900">
+                              Bank Transfer & Credit/Debit Card ({settings.bankName || 'Meezan Bank'})
+                            </span>
                             <span className="bg-sky-100 text-sky-800 font-bold text-[10px] px-2 py-0.5 rounded">
-                              Online Banking
+                              Online Banking & Cards
                             </span>
                           </div>
                           <div className="text-[11px] text-stone-700 font-medium space-y-0.5">
-                            <p>Title: <strong>{settings.bankAccountTitle || 'DENON Cosmetics PK'}</strong></p>
+                            <p>Account Title: <strong>{settings.bankAccountTitle || 'DENON Cosmetics PK'}</strong></p>
                             <p>Account No: <strong className="font-mono text-sky-900">{settings.bankAccountNumber || '01020304050607'}</strong></p>
                             {settings.bankIban && <p>IBAN: <strong className="font-mono text-stone-800">{settings.bankIban}</strong></p>}
                           </div>
-                          {settings.bankInstructions && (
-                            <p className="text-[11px] text-stone-500 italic mt-1">
-                              {settings.bankInstructions}
-                            </p>
-                          )}
+                          <p className="text-[11px] text-stone-500 italic mt-1">
+                            {settings.bankInstructions || 'Transfer via 1Link, ATM, Mobile Banking App, or Visa/Mastercard transfer.'}
+                          </p>
                         </div>
                       </div>
                       {settings.bankQrCode && paymentMethod === 'Bank Transfer' && (
@@ -530,18 +558,18 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
             </h3>
 
             <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
-              {cartItems.map((item) => (
-                <div key={item.product.id} className="flex gap-3 text-xs text-stone-300">
+              {(cartItems || []).map((item, idx) => (
+                <div key={item?.product?.id || `cart-item-${idx}`} className="flex gap-3 text-xs text-stone-300">
                   <img
-                    src={item.product.image}
-                    alt={item.product.name}
-                    className="w-12 h-12 object-cover rounded-lg bg-stone-800 shrink-0"
+                    src={item?.product?.image || 'https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&q=80&w=400'}
+                    alt={item?.product?.name || 'Product'}
+                    className="w-12 h-12 object-cover rounded-lg bg-stone-800 shrink-0 border border-stone-700"
                   />
                   <div className="flex-1">
-                    <h4 className="font-medium text-stone-100 line-clamp-1">{item.product.name}</h4>
-                    <p className="text-[10px] text-stone-400">Qty: {item.quantity}</p>
+                    <h4 className="font-medium text-stone-100 line-clamp-1">{item?.product?.name || 'Skincare Product'}</h4>
+                    <p className="text-[10px] text-stone-400">Qty: {item?.quantity || 1}</p>
                     <p className="font-bold text-amber-300 text-xs">
-                      PKR {(item.product.salePrice * item.quantity).toLocaleString()}
+                      PKR {((item?.product?.salePrice ?? 0) * (item?.quantity ?? 1)).toLocaleString()}
                     </p>
                   </div>
                 </div>
