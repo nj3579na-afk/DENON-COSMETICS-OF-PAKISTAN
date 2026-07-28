@@ -295,6 +295,10 @@ export interface BlogPost {
   author: string;
   date: string;
   readTime: string;
+  tags?: string[];
+  metaTitle?: string;
+  metaDescription?: string;
+  status?: 'Published' | 'Draft';
 }
 
 export interface FAQItem {

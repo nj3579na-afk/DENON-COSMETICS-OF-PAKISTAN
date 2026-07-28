@@ -174,6 +174,10 @@ Denon Brightening Rice Facial Face Wash and Denon Rice Beauty Cream combine ferm
     author: 'Denon Dermatological Research Team',
     date: '2026-07-15',
     readTime: '4 min read',
+    tags: ['Rice Water', 'Niacinamide', 'Fair Skin', 'Dark Spots'],
+    metaTitle: 'Rice Water Skincare Secrets | DENON Cosmetics Pakistan',
+    metaDescription: 'Learn how Rice Water and Niacinamide clear dark spots and hyperpigmentation in Pakistani skin.',
+    status: 'Published',
   },
   {
     id: 'blog-2',
@@ -190,6 +194,10 @@ Denon Brightening Rice Facial Face Wash and Denon Rice Beauty Cream combine ferm
     author: 'Dr. Ayesha Malik (Consultant Dermatologist)',
     date: '2026-07-10',
     readTime: '5 min read',
+    tags: ['Face Wash', 'Pakistani Climate', 'Skin Care Routine', 'Acne Care'],
+    metaTitle: 'Best Face Wash Guide for Pakistan Weather | DENON',
+    metaDescription: 'Dermatologist guide to choosing the best facial cleanser for Pakistani humidity, heat, and dust.',
+    status: 'Published',
   },
   {
     id: 'blog-3',
@@ -202,6 +210,10 @@ Denon Brightening Rice Facial Face Wash and Denon Rice Beauty Cream combine ferm
     author: 'Denon Beauty Lab',
     date: '2026-07-02',
     readTime: '3 min read',
+    tags: ['Hair Removal', 'Body Care', 'Sensitive Skin', 'Painless'],
+    metaTitle: 'Painless Hair Removal Spray Guide | DENON Cosmetics',
+    metaDescription: 'Discover how DENON 4D Hair Removal Spray removes unwanted body hair in 5 minutes without pain.',
+    status: 'Published',
   },
 ];
 

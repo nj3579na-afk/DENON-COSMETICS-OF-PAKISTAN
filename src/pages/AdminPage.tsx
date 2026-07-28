@@ -40,7 +40,14 @@ import {
   ChevronRight,
   Sliders,
   Upload,
-  AlertCircle
+  AlertCircle,
+  Eye,
+  BookOpen,
+  ExternalLink,
+  ToggleLeft,
+  ToggleRight,
+  User,
+  Calendar
 } from 'lucide-react';
 import {
   Product,
@@ -187,12 +194,30 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [isSavingCategory, setIsSavingCategory] = useState(false);
   const [categorySaveError, setCategorySaveError] = useState<string | null>(null);
 
-  // Blog Form State
+  // Blog Management State
+  const [editingBlog, setEditingBlog] = useState<BlogPost | null>(null);
+  const [previewBlogModal, setPreviewBlogModal] = useState<BlogPost | null>(null);
+  const [deleteBlogConfirm, setDeleteBlogConfirm] = useState<BlogPost | null>(null);
+
   const [blogTitle, setBlogTitle] = useState('');
+  const [blogSlug, setBlogSlug] = useState('');
   const [blogCategory, setBlogCategory] = useState('Skincare Tips');
+  const [blogStatus, setBlogStatus] = useState<'Published' | 'Draft'>('Published');
   const [blogExcerpt, setBlogExcerpt] = useState('');
   const [blogContent, setBlogContent] = useState('');
   const [blogImage, setBlogImage] = useState('https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&q=80&w=800');
+  const [blogAuthor, setBlogAuthor] = useState('Denon Dermatological Research Team');
+  const [blogDate, setBlogDate] = useState(new Date().toISOString().split('T')[0]);
+  const [blogReadTime, setBlogReadTime] = useState('4 min read');
+  const [blogTags, setBlogTags] = useState('Rice Water, Niacinamide, Fair Skin');
+  const [blogMetaTitle, setBlogMetaTitle] = useState('');
+  const [blogMetaDescription, setBlogMetaDescription] = useState('');
+
+  // Blog Search & Filter State
+  const [blogSearchQuery, setBlogSearchQuery] = useState('');
+  const [blogCategoryFilter, setBlogCategoryFilter] = useState('All');
+  const [blogStatusFilter, setBlogStatusFilter] = useState('All');
+  const [showBlogPreviewTab, setShowBlogPreviewTab] = useState(false);
 
   // AI Knowledge Form State
   const [aiTopic, setAITopic] = useState('');
@@ -621,25 +646,168 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     }
   };
 
-  // Add Blog
-  const handleAddBlog = (e: React.FormEvent) => {
+  // Reset Blog Form
+  const resetBlogForm = () => {
+    setEditingBlog(null);
+    setBlogTitle('');
+    setBlogSlug('');
+    setBlogCategory('Skincare Tips');
+    setBlogStatus('Published');
+    setBlogExcerpt('');
+    setBlogContent('');
+    setBlogImage('https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&q=80&w=800');
+    setBlogAuthor('Denon Dermatological Research Team');
+    setBlogDate(new Date().toISOString().split('T')[0]);
+    setBlogReadTime('4 min read');
+    setBlogTags('Rice Water, Niacinamide, Fair Skin');
+    setBlogMetaTitle('');
+    setBlogMetaDescription('');
+    setShowBlogPreviewTab(false);
+  };
+
+  // Open Create Blog Modal
+  const handleOpenCreateBlog = () => {
+    resetBlogForm();
+    setShowAddBlogModal(true);
+  };
+
+  // Open Edit Blog Modal
+  const handleOpenEditBlog = (blog: BlogPost) => {
+    setEditingBlog(blog);
+    setBlogTitle(blog.title || '');
+    setBlogSlug(blog.slug || '');
+    setBlogCategory(blog.category || 'Skincare Tips');
+    setBlogStatus(blog.status || 'Published');
+    setBlogExcerpt(blog.excerpt || '');
+    setBlogContent(blog.content || '');
+    setBlogImage(blog.image || 'https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&q=80&w=800');
+    setBlogAuthor(blog.author || 'Denon Dermatological Research Team');
+    setBlogDate(blog.date || new Date().toISOString().split('T')[0]);
+    setBlogReadTime(blog.readTime || '4 min read');
+    setBlogTags(blog.tags ? blog.tags.join(', ') : '');
+    setBlogMetaTitle(blog.metaTitle || '');
+    setBlogMetaDescription(blog.metaDescription || '');
+    setShowBlogPreviewTab(false);
+    setShowAddBlogModal(true);
+  };
+
+  // Save Blog (Create or Update)
+  const handleSaveBlog = (e: React.FormEvent) => {
     e.preventDefault();
-    const newBlog: BlogPost = {
-      id: `blog-${Date.now()}`,
-      title: blogTitle,
-      slug: (blogTitle || '').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-      category: blogCategory,
-      excerpt: blogExcerpt,
-      content: blogContent,
-      image: blogImage,
-      author: 'Denon Skincare Experts',
-      date: new Date().toISOString().split('T')[0],
-      readTime: '4 min read',
-    };
-    const updated = [newBlog, ...blogPosts];
+
+    const tagsArray = blogTags
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean);
+
+    const calculatedReadTime =
+      blogReadTime.trim() ||
+      `${Math.max(1, Math.ceil((blogContent.split(/\s+/).length || 1) / 200))} min read`;
+
+    const finalSlug = (blogSlug.trim() || blogTitle.trim() || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
+    if (editingBlog) {
+      const updatedBlog: BlogPost = {
+        ...editingBlog,
+        title: blogTitle,
+        slug: finalSlug,
+        category: blogCategory,
+        status: blogStatus,
+        excerpt: blogExcerpt,
+        content: blogContent,
+        image: blogImage,
+        author: blogAuthor,
+        date: blogDate,
+        readTime: calculatedReadTime,
+        tags: tagsArray,
+        metaTitle: blogMetaTitle || `${blogTitle} | DENON Cosmetics`,
+        metaDescription: blogMetaDescription || blogExcerpt,
+      };
+
+      const updated = blogPosts.map((b) => (b.id === editingBlog.id ? updatedBlog : b));
+      setBlogPosts(updated);
+      saveBlogPosts(updated);
+
+      const newLogs = addAuditLog({
+        adminUser: `${selectedRole}`,
+        action: 'Updated Blog Article',
+        category: 'Content',
+        ipAddress: '182.185.120.45',
+        details: `Updated skincare article "${blogTitle}"`,
+      });
+      setAuditLogs(newLogs);
+    } else {
+      const newBlog: BlogPost = {
+        id: `blog-${Date.now()}`,
+        title: blogTitle,
+        slug: finalSlug,
+        category: blogCategory,
+        status: blogStatus,
+        excerpt: blogExcerpt,
+        content: blogContent,
+        image: blogImage,
+        author: blogAuthor,
+        date: blogDate,
+        readTime: calculatedReadTime,
+        tags: tagsArray,
+        metaTitle: blogMetaTitle || `${blogTitle} | DENON Cosmetics`,
+        metaDescription: blogMetaDescription || blogExcerpt,
+      };
+
+      const updated = [newBlog, ...blogPosts];
+      setBlogPosts(updated);
+      saveBlogPosts(updated);
+
+      const newLogs = addAuditLog({
+        adminUser: `${selectedRole}`,
+        action: 'Created Blog Article',
+        category: 'Content',
+        ipAddress: '182.185.120.45',
+        details: `Published new skincare article "${blogTitle}"`,
+      });
+      setAuditLogs(newLogs);
+    }
+
+    setShowAddBlogModal(false);
+    resetBlogForm();
+  };
+
+  // Delete Blog
+  const handleDeleteBlog = (blogId: string) => {
+    const blogToDelete = blogPosts.find((b) => b.id === blogId);
+    const updated = blogPosts.filter((b) => b.id !== blogId);
     setBlogPosts(updated);
     saveBlogPosts(updated);
-    setShowAddBlogModal(false);
+
+    const newLogs = addAuditLog({
+      adminUser: `${selectedRole}`,
+      action: 'Deleted Blog Article',
+      category: 'Content',
+      ipAddress: '182.185.120.45',
+      details: `Deleted skincare article "${blogToDelete?.title || blogId}"`,
+    });
+    setAuditLogs(newLogs);
+    setDeleteBlogConfirm(null);
+  };
+
+  // Toggle Published/Draft Status
+  const handleToggleBlogStatus = (blog: BlogPost) => {
+    const newStatus: 'Published' | 'Draft' = blog.status === 'Draft' ? 'Published' : 'Draft';
+    const updated = blogPosts.map((b) => (b.id === blog.id ? { ...b, status: newStatus } : b));
+    setBlogPosts(updated);
+    saveBlogPosts(updated);
+
+    const newLogs = addAuditLog({
+      adminUser: `${selectedRole}`,
+      action: 'Toggled Blog Status',
+      category: 'Content',
+      ipAddress: '182.185.120.45',
+      details: `Set blog status of "${blog.title}" to ${newStatus}`,
+    });
+    setAuditLogs(newLogs);
   };
 
   // Add AI Knowledge Item
@@ -1704,40 +1872,263 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       )}
 
       {/* BLOGS MANAGEMENT TAB */}
-      {activeTab === 'blogs' && (
-        <div className="space-y-6 animate-fade-in">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="font-serif text-xl font-bold text-stone-900">Skincare Blog Articles</h2>
-              <p className="text-xs text-stone-500">Publish guides on rice water, face washes & beauty creams.</p>
-            </div>
-            <button
-              onClick={() => setShowAddBlogModal(true)}
-              className="px-4 py-2 bg-stone-900 text-amber-200 text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-md"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Create Article</span>
-            </button>
-          </div>
+      {activeTab === 'blogs' && (() => {
+        // Calculate statistics
+        const totalArticles = blogPosts.length;
+        const publishedArticles = blogPosts.filter((b) => b.status !== 'Draft').length;
+        const draftArticles = blogPosts.filter((b) => b.status === 'Draft').length;
+        const blogCategories = Array.from(new Set(blogPosts.map((b) => b.category || 'General')));
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {blogPosts.map((b) => (
-              <div key={b.id} className="glass-card p-5 rounded-2xl border border-white/70 space-y-3">
-                <img src={b.image} alt={b.title} className="w-full h-36 object-cover rounded-xl bg-stone-100" />
-                <span className="text-[10px] font-bold uppercase text-amber-800 bg-amber-100 px-2 py-0.5 rounded">
-                  {b.category}
+        // Filtered blogs for admin list
+        const filteredAdminBlogs = blogPosts.filter((b) => {
+          const matchesCategory = blogCategoryFilter === 'All' || b.category === blogCategoryFilter;
+          const matchesStatus = blogStatusFilter === 'All' || (b.status || 'Published') === blogStatusFilter;
+          const query = blogSearchQuery.toLowerCase().trim();
+          const matchesQuery =
+            !query ||
+            (b.title || '').toLowerCase().includes(query) ||
+            (b.excerpt || '').toLowerCase().includes(query) ||
+            (b.author || '').toLowerCase().includes(query) ||
+            (b.slug || '').toLowerCase().includes(query) ||
+            (b.tags && b.tags.some((t) => t.toLowerCase().includes(query)));
+
+          return matchesCategory && matchesStatus && matchesQuery;
+        });
+
+        return (
+          <div className="space-y-6 animate-fade-in">
+            {/* Header & Main Action */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white/70 backdrop-blur-xs p-6 rounded-3xl border border-white/80 shadow-xs">
+              <div>
+                <span className="text-[10px] font-extrabold tracking-widest text-amber-800 uppercase bg-amber-100 px-2.5 py-0.5 rounded-full">
+                  CONTENT MANAGEMENT ENGINE
                 </span>
-                <h3 className="font-bold text-stone-900 text-sm">{b.title}</h3>
-                <p className="text-xs text-stone-600 line-clamp-2">{b.excerpt}</p>
-                <div className="flex items-center justify-between text-[11px] text-stone-400 font-medium pt-2 border-t border-stone-200/60">
-                  <span>{b.author}</span>
-                  <span>{b.readTime}</span>
+                <h2 className="font-serif text-2xl font-bold text-stone-900 mt-1">
+                  Skincare Blogs & Beauty Guides
+                </h2>
+                <p className="text-xs text-stone-600 mt-0.5">
+                  Full CRUD control: Publish, edit, or archive articles. All updates automatically sync with Supabase and website.
+                </p>
+              </div>
+
+              <button
+                onClick={handleOpenCreateBlog}
+                className="px-5 py-3 bg-stone-900 text-amber-200 hover:bg-stone-800 text-xs font-bold rounded-2xl flex items-center justify-center gap-2 shadow-lg transition-all"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Create New Article</span>
+              </button>
+            </div>
+
+            {/* Stat Summary Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="glass-card p-4 rounded-2xl border border-white/80 space-y-1">
+                <p className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">Total Articles</p>
+                <p className="font-serif text-2xl font-bold text-stone-900">{totalArticles}</p>
+                <p className="text-[10px] text-stone-400">In Database</p>
+              </div>
+
+              <div className="glass-card p-4 rounded-2xl border border-white/80 space-y-1">
+                <p className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">Live / Published</p>
+                <p className="font-serif text-2xl font-bold text-emerald-900">{publishedArticles}</p>
+                <p className="text-[10px] text-emerald-600">Visible on Website</p>
+              </div>
+
+              <div className="glass-card p-4 rounded-2xl border border-white/80 space-y-1">
+                <p className="text-[11px] font-bold text-amber-700 uppercase tracking-wider">Drafts / Hidden</p>
+                <p className="font-serif text-2xl font-bold text-amber-900">{draftArticles}</p>
+                <p className="text-[10px] text-amber-600">Work in Progress</p>
+              </div>
+
+              <div className="glass-card p-4 rounded-2xl border border-white/80 space-y-1">
+                <p className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">Categories</p>
+                <p className="font-serif text-2xl font-bold text-stone-900">{blogCategories.length}</p>
+                <p className="text-[10px] text-stone-400">Active Topics</p>
+              </div>
+            </div>
+
+            {/* Search & Filter Toolbar */}
+            <div className="glass-card p-4 rounded-2xl border border-white/80 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="relative w-full md:w-72">
+                <Search className="w-4 h-4 absolute left-3 top-2.5 text-stone-400" />
+                <input
+                  type="text"
+                  placeholder="Search title, author, slug..."
+                  value={blogSearchQuery}
+                  onChange={(e) => setBlogSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-3 py-1.5 glass-input text-xs rounded-xl focus:outline-none"
+                />
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                {/* Category Filter */}
+                <select
+                  value={blogCategoryFilter}
+                  onChange={(e) => setBlogCategoryFilter(e.target.value)}
+                  className="px-3 py-1.5 glass-input rounded-xl text-xs font-semibold text-stone-800"
+                >
+                  <option value="All">All Categories ({blogCategories.length})</option>
+                  {blogCategories.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+
+                {/* Status Tabs */}
+                <div className="flex bg-stone-100 p-1 rounded-xl text-xs font-bold">
+                  {['All', 'Published', 'Draft'].map((st) => (
+                    <button
+                      key={st}
+                      onClick={() => setBlogStatusFilter(st)}
+                      className={`px-3 py-1 rounded-lg transition-all ${
+                        blogStatusFilter === st
+                          ? 'bg-stone-900 text-amber-200 shadow-xs'
+                          : 'text-stone-600 hover:text-stone-900'
+                      }`}
+                    >
+                      {st}
+                    </button>
+                  ))}
                 </div>
               </div>
-            ))}
+            </div>
+
+            {/* Articles List / Cards Grid */}
+            {filteredAdminBlogs.length === 0 ? (
+              <div className="text-center py-16 bg-white/60 rounded-3xl border border-white/80 space-y-3">
+                <BookOpen className="w-10 h-10 text-stone-300 mx-auto" />
+                <h3 className="font-serif text-lg font-bold text-stone-800">No Articles Match Your Search</h3>
+                <p className="text-xs text-stone-500 max-w-sm mx-auto">
+                  Try clearing your search filters or click "Create New Article" to write your first skincare post.
+                </p>
+                <button
+                  onClick={handleOpenCreateBlog}
+                  className="px-4 py-2 bg-stone-900 text-amber-200 text-xs font-bold rounded-xl"
+                >
+                  Create Article Now
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredAdminBlogs.map((b) => (
+                  <div
+                    key={b.id}
+                    className="glass-card p-5 rounded-3xl border border-white/80 space-y-4 flex flex-col justify-between hover:shadow-lg transition-all group"
+                  >
+                    <div className="space-y-3">
+                      {/* Image & Status Badge */}
+                      <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-stone-100 border border-stone-200/60">
+                        <img
+                          src={b.image || 'https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&q=80&w=800'}
+                          alt={b.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                        <div className="absolute top-2 left-2 flex items-center gap-1.5">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-amber-950 bg-amber-100/95 backdrop-blur-xs px-2.5 py-0.5 rounded-md shadow-xs">
+                            {b.category}
+                          </span>
+                        </div>
+                        <div className="absolute top-2 right-2">
+                          <span
+                            className={`text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-md shadow-xs ${
+                              b.status === 'Draft'
+                                ? 'bg-amber-500 text-white'
+                                : 'bg-emerald-600 text-white'
+                            }`}
+                          >
+                            {b.status || 'Published'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Title & Slug */}
+                      <div>
+                        <h3 className="font-serif font-bold text-stone-900 text-base leading-snug line-clamp-2">
+                          {b.title}
+                        </h3>
+                        <p className="text-[10px] font-mono text-stone-400 mt-1 truncate">
+                          /blog/{b.slug}
+                        </p>
+                      </div>
+
+                      {/* Excerpt */}
+                      <p className="text-xs text-stone-600 line-clamp-3 leading-relaxed">
+                        {b.excerpt}
+                      </p>
+
+                      {/* Tags */}
+                      {b.tags && b.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 pt-1">
+                          {b.tags.slice(0, 3).map((t, idx) => (
+                            <span
+                              key={idx}
+                              className="text-[10px] font-medium bg-stone-100 text-stone-600 px-2 py-0.5 rounded-md"
+                            >
+                              #{t}
+                            </span>
+                          ))}
+                          {b.tags.length > 3 && (
+                            <span className="text-[10px] text-stone-400">+{b.tags.length - 3}</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Metadata & Action Toolbar */}
+                    <div className="space-y-3 pt-3 border-t border-stone-200/60">
+                      <div className="flex items-center justify-between text-[11px] text-stone-500 font-medium">
+                        <span className="truncate max-w-[120px]">{b.author || 'Denon Team'}</span>
+                        <span>{b.date}</span>
+                      </div>
+
+                      <div className="grid grid-cols-4 gap-1.5 pt-1">
+                        {/* Preview */}
+                        <button
+                          onClick={() => setPreviewBlogModal(b)}
+                          title="Preview Article"
+                          className="py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-[11px] rounded-xl flex items-center justify-center gap-1 transition-colors"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+
+                        {/* Toggle Status */}
+                        <button
+                          onClick={() => handleToggleBlogStatus(b)}
+                          title={b.status === 'Draft' ? 'Publish Article' : 'Move to Drafts'}
+                          className={`py-1.5 font-bold text-[11px] rounded-xl flex items-center justify-center gap-1 transition-colors ${
+                            b.status === 'Draft'
+                              ? 'bg-emerald-100 hover:bg-emerald-200 text-emerald-800'
+                              : 'bg-amber-100 hover:bg-amber-200 text-amber-800'
+                          }`}
+                        >
+                          {b.status === 'Draft' ? <CheckCircle2 className="w-3.5 h-3.5" /> : <ToggleLeft className="w-3.5 h-3.5" />}
+                        </button>
+
+                        {/* Edit */}
+                        <button
+                          onClick={() => handleOpenEditBlog(b)}
+                          title="Edit Article"
+                          className="py-1.5 bg-amber-900/10 hover:bg-amber-900/20 text-amber-950 font-bold text-[11px] rounded-xl flex items-center justify-center gap-1 transition-colors"
+                        >
+                          <Edit className="w-3.5 h-3.5" />
+                        </button>
+
+                        {/* Delete */}
+                        <button
+                          onClick={() => setDeleteBlogConfirm(b)}
+                          title="Delete Article"
+                          className="py-1.5 bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold text-[11px] rounded-xl flex items-center justify-center gap-1 transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* REVIEWS TAB */}
       {activeTab === 'reviews' && (
@@ -2463,67 +2854,419 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         </div>
       )}
 
-      {/* CREATE BLOG MODAL */}
+      {/* CREATE / EDIT BLOG MODAL */}
       {showAddBlogModal && (
         <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-lg border border-stone-200 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-            <h2 className="font-serif text-lg font-bold text-stone-900">Create Skincare Article</h2>
-            <form onSubmit={handleAddBlog} className="space-y-3 text-xs font-semibold">
+          <div className="bg-white rounded-3xl p-6 md:p-8 w-full max-w-3xl border border-stone-200 shadow-2xl space-y-5 max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-stone-100 pb-4">
               <div>
-                <label className="block text-stone-700 mb-1">Title</label>
-                <input
-                  type="text"
-                  required
-                  value={blogTitle}
-                  onChange={(e) => setBlogTitle(e.target.value)}
-                  className="w-full p-2.5 border rounded-xl"
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full">
+                  {editingBlog ? 'EDITING ARTICLE' : 'NEW ARTICLE'}
+                </span>
+                <h2 className="font-serif text-xl font-bold text-stone-900 mt-1">
+                  {editingBlog ? `Edit: ${editingBlog.title}` : 'Create Skincare Blog Post'}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddBlogModal(false);
+                  resetBlogForm();
+                }}
+                className="p-2 hover:bg-stone-100 text-stone-500 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Tab switch between Form and Quick Live Preview inside modal */}
+            <div className="flex items-center justify-between bg-stone-100 p-1 rounded-2xl text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => setShowBlogPreviewTab(false)}
+                className={`flex-1 py-2 rounded-xl transition-all ${
+                  !showBlogPreviewTab ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-500 hover:text-stone-900'
+                }`}
+              >
+                Article Editor
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowBlogPreviewTab(true)}
+                className={`flex-1 py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                  showBlogPreviewTab ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-500 hover:text-stone-900'
+                }`}
+              >
+                <Eye className="w-3.5 h-3.5 text-amber-800" />
+                <span>Live Preview</span>
+              </button>
+            </div>
+
+            {!showBlogPreviewTab ? (
+              <form onSubmit={handleSaveBlog} className="space-y-4 text-xs font-semibold">
+                {/* Featured Image Uploader */}
+                <ImageUploader
+                  label="Featured Article Photo (Uploaded directly to Supabase CDN) *"
+                  value={blogImage}
+                  onChange={(val) => setBlogImage(val)}
+                  helperText="Upload an image from your device gallery or enter a image URL."
+                  previewHeightClass="h-48"
                 />
-              </div>
 
-              <div>
-                <label className="block text-stone-700 mb-1">Excerpt</label>
-                <input
-                  type="text"
-                  required
-                  value={blogExcerpt}
-                  onChange={(e) => setBlogExcerpt(e.target.value)}
-                  className="w-full p-2.5 border rounded-xl"
-                />
-              </div>
+                {/* Title & Slug */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-stone-700 mb-1">Blog Title *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. 7 Rice Water Face Wash Benefits for Glowing Skin"
+                      value={blogTitle}
+                      onChange={(e) => {
+                        setBlogTitle(e.target.value);
+                        if (!editingBlog && !blogSlug) {
+                          setBlogSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, '-'));
+                        }
+                      }}
+                      className="w-full p-3 glass-input rounded-xl border border-stone-200 focus:outline-none focus:border-amber-800"
+                    />
+                  </div>
 
-              <div>
-                <label className="block text-stone-700 mb-1">Article Content</label>
-                <textarea
-                  rows={4}
-                  required
-                  value={blogContent}
-                  onChange={(e) => setBlogContent(e.target.value)}
-                  className="w-full p-2.5 border rounded-xl"
-                />
-              </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-stone-700">URL Slug *</label>
+                      <button
+                        type="button"
+                        onClick={() => setBlogSlug((blogTitle || '').toLowerCase().replace(/[^a-z0-9]+/g, '-'))}
+                        className="text-[10px] text-amber-800 hover:underline"
+                      >
+                        Auto-Generate
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. rice-water-face-wash-benefits"
+                      value={blogSlug}
+                      onChange={(e) => setBlogSlug(e.target.value)}
+                      className="w-full p-3 glass-input rounded-xl border border-stone-200 font-mono text-[11px] focus:outline-none focus:border-amber-800"
+                    />
+                  </div>
+                </div>
 
-              {/* BLOG IMAGE UPLOAD FIELD */}
-              <ImageUploader
-                label="Featured Article Photo *"
-                value={blogImage}
-                onChange={(val) => setBlogImage(val)}
-                helperText="Upload or drag a banner photo directly from your device."
-                previewHeightClass="h-40"
-              />
+                {/* Category & Status */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-stone-700 mb-1">Category *</label>
+                    <select
+                      value={blogCategory}
+                      onChange={(e) => setBlogCategory(e.target.value)}
+                      className="w-full p-3 glass-input rounded-xl border border-stone-200 focus:outline-none focus:border-amber-800"
+                    >
+                      <option value="Skincare Tips">Skincare Tips</option>
+                      <option value="Rice Water Secrets">Rice Water Secrets</option>
+                      <option value="Ingredients Guide">Ingredients Guide</option>
+                      <option value="Routine Guides">Routine Guides</option>
+                      <option value="Product Spotlights">Product Spotlights</option>
+                      <option value="Body Care">Body Care</option>
+                      <option value="Acne & Brightening">Acne & Brightening</option>
+                    </select>
+                  </div>
 
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAddBlogModal(false)}
-                  className="w-full py-2 bg-stone-100 font-bold rounded-xl"
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="w-full py-2 bg-stone-900 text-amber-200 font-bold rounded-xl">
-                  Publish Article
-                </button>
+                  <div>
+                    <label className="block text-stone-700 mb-1">Publication Status *</label>
+                    <select
+                      value={blogStatus}
+                      onChange={(e) => setBlogStatus(e.target.value as 'Published' | 'Draft')}
+                      className="w-full p-3 glass-input rounded-xl border border-stone-200 focus:outline-none focus:border-amber-800"
+                    >
+                      <option value="Published">Published (Visible immediately on website)</option>
+                      <option value="Draft">Draft (Saved in admin panel only)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Author, Date & Read Time */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-stone-700 mb-1">Author Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Dr. Ayesha Khan"
+                      value={blogAuthor}
+                      onChange={(e) => setBlogAuthor(e.target.value)}
+                      className="w-full p-3 glass-input rounded-xl border border-stone-200 focus:outline-none focus:border-amber-800"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-stone-700 mb-1">Publish Date</label>
+                    <input
+                      type="date"
+                      value={blogDate}
+                      onChange={(e) => setBlogDate(e.target.value)}
+                      className="w-full p-3 glass-input rounded-xl border border-stone-200 focus:outline-none focus:border-amber-800"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-stone-700 mb-1">Read Time</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 5 min read"
+                      value={blogReadTime}
+                      onChange={(e) => setBlogReadTime(e.target.value)}
+                      className="w-full p-3 glass-input rounded-xl border border-stone-200 focus:outline-none focus:border-amber-800"
+                    />
+                  </div>
+                </div>
+
+                {/* Excerpt */}
+                <div>
+                  <label className="block text-stone-700 mb-1">Short Description / Excerpt *</label>
+                  <textarea
+                    rows={2}
+                    required
+                    placeholder="Brief 1-2 sentence overview shown on blog index cards and search results."
+                    value={blogExcerpt}
+                    onChange={(e) => setBlogExcerpt(e.target.value)}
+                    className="w-full p-3 glass-input rounded-xl border border-stone-200 focus:outline-none focus:border-amber-800"
+                  />
+                </div>
+
+                {/* Article Content */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-stone-700">Full Article Content (Rich Body Text) *</label>
+                    <span className="text-[10px] text-stone-400">Separate paragraphs with double enter lines</span>
+                  </div>
+                  <textarea
+                    rows={8}
+                    required
+                    placeholder="Write your complete skincare guide here. Separate key sections with double blank lines for paragraphs."
+                    value={blogContent}
+                    onChange={(e) => setBlogContent(e.target.value)}
+                    className="w-full p-3 glass-input rounded-xl border border-stone-200 focus:outline-none focus:border-amber-800 leading-relaxed"
+                  />
+                </div>
+
+                {/* Tags */}
+                <div>
+                  <label className="block text-stone-700 mb-1">Tags & Keywords (Comma separated)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Rice Water, Face Wash, Hyperpigmentation, Niacinamide"
+                    value={blogTags}
+                    onChange={(e) => setBlogTags(e.target.value)}
+                    className="w-full p-3 glass-input rounded-xl border border-stone-200 focus:outline-none focus:border-amber-800"
+                  />
+                </div>
+
+                {/* SEO Settings Accordion / Block */}
+                <div className="p-4 bg-amber-50/50 rounded-2xl border border-amber-200/60 space-y-3">
+                  <div className="flex items-center gap-2 text-amber-900 font-bold">
+                    <Globe className="w-4 h-4 text-amber-800" />
+                    <span>SEO Meta Settings (Search Engine Optimization)</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-stone-700 text-[11px]">Meta Title</label>
+                        <span className="text-[10px] text-stone-400">
+                          {blogMetaTitle.length}/60 chars
+                        </span>
+                      </div>
+                      <input
+                        type="text"
+                        placeholder={blogTitle || 'SEO title shown in Google search'}
+                        value={blogMetaTitle}
+                        onChange={(e) => setBlogMetaTitle(e.target.value)}
+                        className="w-full p-2.5 bg-white rounded-xl border border-amber-200 text-xs"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-stone-700 text-[11px]">Meta Description</label>
+                        <span className="text-[10px] text-stone-400">
+                          {blogMetaDescription.length}/160 chars
+                        </span>
+                      </div>
+                      <input
+                        type="text"
+                        placeholder={blogExcerpt || 'SEO snippet shown in Google search'}
+                        value={blogMetaDescription}
+                        onChange={(e) => setBlogMetaDescription(e.target.value)}
+                        className="w-full p-2.5 bg-white rounded-xl border border-amber-200 text-xs"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Form Buttons */}
+                <div className="flex items-center gap-3 pt-3 border-t border-stone-200/60">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAddBlogModal(false);
+                      resetBlogForm();
+                    }}
+                    className="flex-1 py-3 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold rounded-xl transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 py-3 bg-stone-900 hover:bg-stone-800 text-amber-200 font-bold rounded-xl shadow-md transition-colors"
+                  >
+                    {editingBlog ? 'Save Article Changes' : 'Publish Article Now'}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              /* Live Preview Card Inside Modal */
+              <div className="p-6 bg-stone-50 rounded-2xl border border-stone-200/80 space-y-6">
+                <div className="space-y-3">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-amber-900 bg-amber-100 px-3 py-1 rounded-full">
+                    {blogCategory}
+                  </span>
+                  <h1 className="font-serif text-2xl font-bold text-stone-900 leading-snug">
+                    {blogTitle || 'Untitled Article Title'}
+                  </h1>
+                  <div className="flex items-center gap-4 text-xs text-stone-500 font-medium">
+                    <span>By {blogAuthor || 'Denon Team'}</span>
+                    <span>•</span>
+                    <span>{blogDate}</span>
+                    <span>•</span>
+                    <span>{blogReadTime || '4 min read'}</span>
+                  </div>
+                </div>
+
+                {blogImage && (
+                  <img
+                    src={blogImage}
+                    alt={blogTitle}
+                    className="w-full max-h-72 object-cover rounded-2xl shadow-sm"
+                  />
+                )}
+
+                <div className="p-4 bg-white rounded-xl border border-stone-200/60 text-xs font-semibold text-stone-700 italic">
+                  "{blogExcerpt || 'No short description provided yet.'}"
+                </div>
+
+                <div className="prose prose-stone max-w-none text-xs text-stone-800 leading-relaxed space-y-3 whitespace-pre-line">
+                  {blogContent || 'Write content in the editor to view live article preview here.'}
+                </div>
+
+                {blogTags && (
+                  <div className="flex flex-wrap gap-1.5 pt-4 border-t border-stone-200">
+                    {blogTags.split(',').map((t, idx) => (
+                      <span key={idx} className="text-[10px] bg-stone-200 text-stone-700 px-2.5 py-1 rounded-md font-medium">
+                        #{t.trim()}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
-            </form>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ARTICLE QUICK PREVIEW MODAL */}
+      {previewBlogModal && (
+        <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 md:p-8 w-full max-w-3xl border border-stone-200 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-stone-100 pb-4">
+              <span className="text-xs font-bold uppercase tracking-wider text-amber-900 bg-amber-100 px-3 py-1 rounded-full">
+                {previewBlogModal.category}
+              </span>
+              <button
+                onClick={() => setPreviewBlogModal(null)}
+                className="p-1.5 text-stone-400 hover:text-stone-900 hover:bg-stone-100 rounded-full"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <h1 className="font-serif text-2xl font-bold text-stone-900 leading-snug">
+                {previewBlogModal.title}
+              </h1>
+              <div className="flex items-center gap-4 text-xs text-stone-500 font-medium">
+                <span>By {previewBlogModal.author}</span>
+                <span>•</span>
+                <span>{previewBlogModal.date}</span>
+                <span>•</span>
+                <span>{previewBlogModal.readTime}</span>
+              </div>
+            </div>
+
+            <img
+              src={previewBlogModal.image}
+              alt={previewBlogModal.title}
+              className="w-full max-h-80 object-cover rounded-2xl shadow-sm"
+            />
+
+            <div className="p-4 bg-amber-50/60 rounded-xl border border-amber-200/60 text-xs font-medium text-amber-950 italic">
+              "{previewBlogModal.excerpt}"
+            </div>
+
+            <div className="text-xs text-stone-800 leading-relaxed whitespace-pre-line space-y-3">
+              {previewBlogModal.content}
+            </div>
+
+            {previewBlogModal.tags && previewBlogModal.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 pt-4 border-t border-stone-200">
+                {previewBlogModal.tags.map((t, idx) => (
+                  <span key={idx} className="text-[10px] bg-stone-100 text-stone-600 px-2.5 py-1 rounded-md font-medium">
+                    #{t}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <div className="flex justify-end pt-2">
+              <button
+                onClick={() => setPreviewBlogModal(null)}
+                className="px-6 py-2.5 bg-stone-900 text-amber-200 font-bold text-xs rounded-xl"
+              >
+                Close Preview
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE BLOG CONFIRMATION MODAL */}
+      {deleteBlogConfirm && (
+        <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-md border border-stone-200 shadow-2xl space-y-4 text-center">
+            <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center mx-auto">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="font-serif text-lg font-bold text-stone-900">Delete Skincare Article?</h3>
+              <p className="text-xs text-stone-500 mt-1">
+                Are you sure you want to permanently delete <strong className="text-stone-900">"{deleteBlogConfirm.title}"</strong>? This will remove the article from Supabase and the live website.
+              </p>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setDeleteBlogConfirm(null)}
+                className="flex-1 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDeleteBlog(deleteBlogConfirm.id)}
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-md transition-colors"
+              >
+                Yes, Delete Article
+              </button>
+            </div>
           </div>
         </div>
       )}
