@@ -218,6 +218,7 @@ export function App() {
             settings={settings}
             selectedCategory={selectedCategory}
             setSelectedCategory={setSelectedCategory}
+            categories={categories}
           />
         )}
 

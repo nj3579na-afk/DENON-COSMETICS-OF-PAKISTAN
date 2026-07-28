@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { Search, Filter, SlidersHorizontal, Grid, List, Sparkles } from 'lucide-react';
-import { Product, CategoryType, AdminSettings } from '../types';
+import { Product, CategoryType, AdminSettings, CategoryItem } from '../types';
 import { ProductCard } from '../components/ProductCard';
+import { getStoredCategories } from '../services/api';
 
 interface ShopPageProps {
   products: Product[];
@@ -13,6 +14,7 @@ interface ShopPageProps {
   settings: AdminSettings;
   selectedCategory: CategoryType;
   setSelectedCategory: (cat: CategoryType) => void;
+  categories?: CategoryItem[];
 }
 
 export const ShopPage: React.FC<ShopPageProps> = ({
@@ -25,21 +27,17 @@ export const ShopPage: React.FC<ShopPageProps> = ({
   settings,
   selectedCategory,
   setSelectedCategory,
+  categories,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [maxPrice, setMaxPrice] = useState<number>(2000);
   const [sortBy, setSortBy] = useState<'featured' | 'price-low' | 'price-high' | 'rating' | 'newest'>('featured');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
+  const activeCategories = categories && categories.length > 0 ? categories : getStoredCategories();
   const categoriesList: CategoryType[] = [
     'All',
-    'Face Wash',
-    'Beauty Cream',
-    'Body Lotion',
-    'Hair Removal Spray',
-    'Serum',
-    'Cream Bleach',
-    'Soap',
+    ...activeCategories.filter((c) => c.isActive !== false).map((c) => c.name),
   ];
 
   const filteredProducts = useMemo(() => {

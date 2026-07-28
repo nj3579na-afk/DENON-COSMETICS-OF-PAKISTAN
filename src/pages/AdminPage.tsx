@@ -168,7 +168,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   // Product Form State
   const [pName, setPName] = useState('');
   const [pBrand, setPBrand] = useState('DENON®');
-  const [pCategory, setPCategory] = useState<CategoryType>('Face Wash');
+  const [pCategory, setPCategory] = useState<string>('');
   const [pRetail, setPRetail] = useState(650);
   const [pSale, setPSale] = useState(499);
   const [pStock, setPStock] = useState(100);
@@ -187,7 +187,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
   // Category Form State
   const [editingCategory, setEditingCategory] = useState<CategoryItem | null>(null);
-  const [catName, setCatName] = useState<CategoryType>('Serum');
+  const [catName, setCatName] = useState<string>('');
   const [catDesc, setCatDesc] = useState('');
   const [catImage, setCatImage] = useState('');
   const [categorySaveSuccess, setCategorySaveSuccess] = useState('');
@@ -242,7 +242,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     setReviews(getStoredReviews());
     setAuditLogs(getStoredAuditLogs());
     setCustomers(getStoredCustomers());
-    setCategories(categoriesProp && categoriesProp.length > 0 ? categoriesProp : getStoredCategories());
+    const loadedCats = categoriesProp && categoriesProp.length > 0 ? categoriesProp : getStoredCategories();
+    setCategories(loadedCats);
+    if (!pCategory && loadedCats.length > 0) {
+      setPCategory(loadedCats[0].name);
+    }
     setAIKnowledge(getStoredAIKnowledge());
     setBlogPosts(getStoredBlogPosts());
     setSEOSettings(getStoredSEOSettings());
@@ -333,6 +337,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       const ingArray = pIngredients.split(',').map((s) => s.trim()).filter(Boolean);
       const benArray = pBenefits.split(',').map((s) => s.trim()).filter(Boolean);
 
+      const selectedCatObj = categories.find(
+        (c) => c.name.toLowerCase() === pCategory.toLowerCase() || c.id === pCategory
+      );
+      const finalCatName = selectedCatObj ? selectedCatObj.name : (pCategory || (categories[0]?.name ?? 'Face Wash'));
+      const finalCatId = selectedCatObj ? selectedCatObj.id : undefined;
+
       let updated: Product[];
       if (editingProduct) {
         updated = products.map((p) => {
@@ -341,7 +351,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               ...p,
               name: pName,
               brand: pBrand,
-              category: pCategory,
+              category: finalCatName,
+              categoryId: finalCatId,
               retailPrice: Number(pRetail),
               salePrice: Number(pSale),
               discountPercent,
@@ -366,7 +377,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           id: `denon-prod-${Date.now()}`,
           name: pName,
           brand: pBrand,
-          category: pCategory,
+          category: finalCatName,
+          categoryId: finalCatId,
           retailPrice: Number(pRetail),
           salePrice: Number(pSale),
           discountPercent,
@@ -468,7 +480,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     setEditingProduct(p);
     setPName(p.name);
     setPBrand(p.brand);
-    setPCategory(p.category);
+    setPCategory(p.category || (categories[0]?.name ?? ''));
     setPRetail(p.retailPrice);
     setPSale(p.salePrice);
     setPStock(p.stockCount);
@@ -558,7 +570,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   // Category Actions & Handlers
   const handleEditCategoryClick = (cat: CategoryItem) => {
     setEditingCategory(cat);
-    setCatName(cat.name as CategoryType);
+    setCatName(cat.name);
     setCatDesc(cat.description || '');
     setCatImage(cat.image || '');
     setShowAddCategoryModal(true);
@@ -566,7 +578,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
   const handleCreateCategoryClick = () => {
     setEditingCategory(null);
-    setCatName('Serum');
+    setCatName('');
     setCatDesc('');
     setCatImage('');
     setShowAddCategoryModal(true);
@@ -1407,7 +1419,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 setEditingProduct(null);
                 setPName('');
                 setPBrand('DENON®');
-                setPCategory('Face Wash');
+                setPCategory(categories.length > 0 ? categories[0].name : '');
                 setPRetail(650);
                 setPSale(499);
                 setPStock(100);
@@ -2613,21 +2625,21 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-stone-700 mb-1">Category</label>
+                  <label className="block text-stone-700 mb-1">Category *</label>
                   <select
                     value={pCategory}
                     onChange={(e: any) => setPCategory(e.target.value)}
                     className="w-full p-2.5 border rounded-xl"
                   >
-                    <option value="Face Wash">Face Wash</option>
-                    <option value="Beauty Cream">Beauty Cream</option>
-                    <option value="Serum">Serum</option>
-                    <option value="Hair Removal Spray">Hair Removal Spray</option>
-                    <option value="Body Lotion">Body Lotion</option>
-                    <option value="Cream Bleach">Cream Bleach</option>
-                    <option value="Soap">Soap</option>
-                    <option value="Scrub">Scrub</option>
-                    <option value="Mask">Mask</option>
+                    {categories.length === 0 ? (
+                      <option value="">No categories available</option>
+                    ) : (
+                      categories.map((cat) => (
+                        <option key={cat.id} value={cat.name}>
+                          {cat.name}
+                        </option>
+                      ))
+                    )}
                   </select>
                 </div>
 

@@ -1,20 +1,11 @@
-export type CategoryType = 
-  | 'Beauty Cream'
-  | 'Face Wash'
-  | 'Cream Bleach'
-  | 'Body Lotion'
-  | 'Hair Removal Spray'
-  | 'Serum'
-  | 'Soap'
-  | 'Scrub'
-  | 'Mask'
-  | 'All';
+export type CategoryType = string;
 
 export interface Product {
   id: string;
   name: string;
   brand: string; // e.g. "DENON Skin Beauty", "DENON®", "Sansal"
   category: CategoryType;
+  categoryId?: string;
   retailPrice: number; // in PKR
   salePrice: number;   // in PKR
   discountPercent: number;
