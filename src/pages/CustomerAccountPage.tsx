@@ -725,16 +725,16 @@ export const CustomerAccountPage: React.FC<CustomerAccountPageProps> = ({
                       Status: {order.status}
                     </span>
                     <span className="font-bold text-sm text-stone-900">
-                      PKR {order.total.toLocaleString()}
+                      PKR {(order.total ?? 0).toLocaleString()}
                     </span>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  {order.items.map((item) => (
-                    <div key={item.product.id} className="flex items-center justify-between text-xs text-stone-700">
-                      <span>• {item.product.name} (x{item.quantity})</span>
-                      <span>PKR {(item.product.salePrice * item.quantity).toLocaleString()}</span>
+                  {order.items.map((item, idx) => (
+                    <div key={item?.product?.id || `item-${idx}`} className="flex items-center justify-between text-xs text-stone-700">
+                      <span>• {item?.product?.name || 'Item'} (x{item?.quantity || 1})</span>
+                      <span>PKR {((item?.product?.salePrice ?? 0) * (item?.quantity ?? 1)).toLocaleString()}</span>
                     </div>
                   ))}
                 </div>

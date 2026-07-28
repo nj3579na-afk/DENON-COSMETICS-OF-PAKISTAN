@@ -119,7 +119,7 @@ export const ShopPage: React.FC<ShopPageProps> = ({
           <div className="space-y-1">
             <div className="flex justify-between text-xs font-semibold text-stone-700">
               <span>Max Price:</span>
-              <span className="text-amber-900 font-bold">PKR {maxPrice.toLocaleString()}</span>
+              <span className="text-amber-900 font-bold">PKR {(maxPrice ?? 2000).toLocaleString()}</span>
             </div>
             <input
               type="range"

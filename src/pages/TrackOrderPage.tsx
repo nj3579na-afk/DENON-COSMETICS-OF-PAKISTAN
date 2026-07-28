@@ -97,7 +97,7 @@ export const TrackOrderPage: React.FC = () => {
                 <div className="text-right">
                   <span className="text-xs text-stone-500">Payable Amount:</span>
                   <p className="font-sans text-xl font-extrabold text-stone-900">
-                    PKR {searchedOrder.total.toLocaleString()}
+                    PKR {(searchedOrder.total ?? 0).toLocaleString()}
                   </p>
                   <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold uppercase">
                     {searchedOrder.paymentMethod}
@@ -164,7 +164,7 @@ export const TrackOrderPage: React.FC = () => {
                         </div>
                       </div>
                       <span className="font-bold text-stone-900">
-                        PKR {(item.product.salePrice * item.quantity).toLocaleString()}
+                        PKR {((item?.product?.salePrice ?? 0) * (item?.quantity ?? 1)).toLocaleString()}
                       </span>
                     </div>
                   ))}

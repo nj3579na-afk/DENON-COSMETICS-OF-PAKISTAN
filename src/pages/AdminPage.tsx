@@ -1079,7 +1079,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 <span className="p-2 rounded-xl bg-amber-100 text-amber-900">PKR</span>
               </div>
               <p className="font-sans text-3xl font-extrabold text-stone-900">
-                PKR {calculateTotalRevenue().toLocaleString()}
+                PKR {(calculateTotalRevenue() ?? 0).toLocaleString()}
               </p>
               <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-700">
                 <ArrowUpRight className="w-4 h-4" />
@@ -1195,7 +1195,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <span className="font-bold text-stone-900">PKR {o.total.toLocaleString()}</span>
+                    <span className="font-bold text-stone-900">PKR {(o.total ?? 0).toLocaleString()}</span>
                     <span
                       className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] ${
                         o.status === 'Delivered'
@@ -1306,8 +1306,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                         </div>
                       </td>
                       <td className="p-3.5 font-medium">{p.category}</td>
-                      <td className="p-3.5 text-stone-400 line-through">PKR {p.retailPrice.toLocaleString()}</td>
-                      <td className="p-3.5 font-extrabold text-amber-900">PKR {p.salePrice.toLocaleString()}</td>
+                      <td className="p-3.5 text-stone-400 line-through">PKR {(p.retailPrice ?? 0).toLocaleString()}</td>
+                      <td className="p-3.5 font-extrabold text-amber-900">PKR {(p.salePrice ?? 0).toLocaleString()}</td>
                       <td className="p-3.5">
                         <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 font-bold text-[10px]">
                           {p.discountPercent}% OFF
@@ -1490,7 +1490,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
                   <div className="flex items-center gap-3">
                     <span className="font-extrabold text-amber-900 text-sm">
-                      PKR {o.total.toLocaleString()} ({o.paymentMethod})
+                      PKR {(o.total ?? 0).toLocaleString()} ({o.paymentMethod})
                     </span>
 
                     <select
@@ -1532,8 +1532,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                     <p className="font-bold text-stone-900 mb-1">Order Items ({o.items.length})</p>
                     {o.items.map((i, idx) => (
                       <div key={idx} className="flex items-center justify-between text-[11px]">
-                        <span>• {i.product.name} (x{i.quantity})</span>
-                        <span className="font-bold text-stone-900">PKR {(i.product.salePrice * i.quantity).toLocaleString()}</span>
+                        <span>• {i?.product?.name || 'Item'} (x{i?.quantity || 1})</span>
+                        <span className="font-bold text-stone-900">PKR {((i?.product?.salePrice ?? 0) * (i?.quantity ?? 1)).toLocaleString()}</span>
                       </div>
                     ))}
                   </div>
@@ -1587,7 +1587,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                     </td>
                     <td className="p-3.5 font-semibold text-amber-900">{c.city}</td>
                     <td className="p-3.5 font-bold">{c.totalOrders} orders</td>
-                    <td className="p-3.5 font-extrabold text-stone-900">PKR {c.totalSpent.toLocaleString()}</td>
+                    <td className="p-3.5 font-extrabold text-stone-900">PKR {(c.totalSpent ?? 0).toLocaleString()}</td>
                     <td className="p-3.5">
                       <span
                         className={`px-2 py-0.5 rounded font-bold text-[10px] ${
@@ -2040,7 +2040,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               <tbody className="divide-y divide-stone-200/60">
                 {auditLogs.map((log) => (
                   <tr key={log.id} className="hover:bg-white/60 font-mono text-[11px]">
-                    <td className="p-3.5 text-stone-500">{new Date(log.timestamp).toLocaleString()}</td>
+                    <td className="p-3.5 text-stone-500">
+                      {log.timestamp ? new Date(log.timestamp).toLocaleString() : 'N/A'}
+                    </td>
                     <td className="p-3.5 font-bold text-stone-900">{log.adminUser}</td>
                     <td className="p-3.5 font-bold text-amber-900">{log.action}</td>
                     <td className="p-3.5">
@@ -2151,10 +2153,10 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 <tbody className="divide-y divide-stone-100">
                   {selectedOrderForInvoice.items.map((i, idx) => (
                     <tr key={idx}>
-                      <td className="p-3 font-semibold text-stone-900">{i.product.name}</td>
-                      <td className="p-3 font-bold">{i.quantity}</td>
-                      <td className="p-3 text-right">PKR {i.product.salePrice.toLocaleString()}</td>
-                      <td className="p-3 text-right font-bold">PKR {(i.product.salePrice * i.quantity).toLocaleString()}</td>
+                      <td className="p-3 font-semibold text-stone-900">{i?.product?.name || 'Item'}</td>
+                      <td className="p-3 font-bold">{i?.quantity || 1}</td>
+                      <td className="p-3 text-right">PKR {(i?.product?.salePrice ?? 0).toLocaleString()}</td>
+                      <td className="p-3 text-right font-bold">PKR {((i?.product?.salePrice ?? 0) * (i?.quantity ?? 1)).toLocaleString()}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -2165,7 +2167,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
             <div className="bg-stone-50 p-4 rounded-2xl border border-stone-200 text-xs space-y-1 text-stone-800">
               <div className="flex justify-between">
                 <span>Subtotal:</span>
-                <span className="font-bold">PKR {selectedOrderForInvoice.subtotal.toLocaleString()}</span>
+                <span className="font-bold">PKR {(selectedOrderForInvoice.subtotal ?? 0).toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-emerald-800">
                 <span>Shipping Fee:</span>
@@ -2175,7 +2177,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               </div>
               <div className="flex justify-between text-sm font-extrabold text-stone-900 border-t border-stone-200 pt-2 mt-1">
                 <span>Amount to Collect (COD):</span>
-                <span className="text-amber-900 font-mono">PKR {selectedOrderForInvoice.total.toLocaleString()}</span>
+                <span className="text-amber-900 font-mono">PKR {(selectedOrderForInvoice.total ?? 0).toLocaleString()}</span>
               </div>
             </div>
 

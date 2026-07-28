@@ -56,9 +56,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
   const generateWhatsAppCartSummary = () => {
     const itemsList = items
-      .map((i) => `• ${i.product.name} (x${i.quantity}) - PKR ${(i.product.salePrice * i.quantity).toLocaleString()}`)
+      .map((i) => `• ${i?.product?.name || 'Product'} (x${i?.quantity || 1}) - PKR ${((i?.product?.salePrice ?? 0) * (i?.quantity ?? 1)).toLocaleString()}`)
       .join('\n');
-    const msg = `Hello Denon Cosmetics! I would like to order the following items via Cash on Delivery:\n\n${itemsList}\n\n*Total Order Amount:* PKR ${grandTotal.toLocaleString()}\n*Shipping:* ${shippingFee === 0 ? 'FREE Shipping' : `PKR ${shippingFee}`}\n\nPlease confirm my order address.`;
+    const msg = `Hello Denon Cosmetics! I would like to order the following items via Cash on Delivery:\n\n${itemsList}\n\n*Total Order Amount:* PKR ${(grandTotal ?? 0).toLocaleString()}\n*Shipping:* ${shippingFee === 0 ? 'FREE Shipping' : `PKR ${(shippingFee ?? 0).toLocaleString()}`}\n\nPlease confirm my order address.`;
     const cleanWhatsappNumber = (whatsappNumber || '').replace(/[^0-9]/g, '');
     return `https://wa.me/${cleanWhatsappNumber}?text=${encodeURIComponent(msg)}`;
   };
@@ -101,7 +101,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 </span>
               ) : (
                 <span>
-                  Add <strong className="text-amber-950">PKR {amountNeededForFreeShipping.toLocaleString()}</strong> more for FREE Shipping!
+                  Add <strong className="text-amber-950">PKR {(amountNeededForFreeShipping ?? 0).toLocaleString()}</strong> more for FREE Shipping!
                 </span>
               )}
             </div>
@@ -135,14 +135,14 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 </button>
               </div>
             ) : (
-              items.map((item) => (
+              items.map((item, idx) => (
                 <div
-                  key={item.product.id}
+                  key={item?.product?.id || `cart-item-${idx}`}
                   className="flex gap-4 p-3 rounded-xl border border-stone-200/90 bg-stone-50/50 hover:bg-white transition-all shadow-2xs"
                 >
                   <img
-                    src={item.product.image}
-                    alt={item.product.name}
+                    src={item?.product?.image || 'https://images.unsplash.com/photo-1556228720-195a672e8a03'}
+                    alt={item?.product?.name || 'Product'}
                     className="w-20 h-20 object-cover rounded-lg bg-stone-100 border border-stone-200"
                   />
 
@@ -150,33 +150,33 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     <div>
                       <div className="flex justify-between items-start gap-2">
                         <h4 className="font-serif text-xs font-bold text-stone-900 line-clamp-2">
-                          {item.product.name}
+                          {item?.product?.name || 'Skincare Item'}
                         </h4>
                         <button
-                          id={`remove-item-${item.product.id}`}
-                          onClick={() => onRemoveItem(item.product.id)}
+                          id={`remove-item-${item?.product?.id}`}
+                          onClick={() => item?.product?.id && onRemoveItem(item.product.id)}
                           className="text-stone-400 hover:text-rose-600 p-1"
                           title="Remove item"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
-                      <p className="text-[10px] text-amber-800 font-semibold">{item.product.brand}</p>
+                      <p className="text-[10px] text-amber-800 font-semibold">{item?.product?.brand || 'DENON'}</p>
                     </div>
 
                     <div className="flex items-center justify-between mt-2">
                       <div className="flex items-center border border-stone-300 rounded-md bg-white">
                         <button
-                          id={`dec-qty-${item.product.id}`}
-                          onClick={() => onUpdateQuantity(item.product.id, -1)}
+                          id={`dec-qty-${item?.product?.id}`}
+                          onClick={() => item?.product?.id && onUpdateQuantity(item.product.id, -1)}
                           className="p-1 hover:bg-stone-100 text-stone-700"
                         >
                           <Minus className="w-3 h-3" />
                         </button>
-                        <span className="px-2 text-xs font-bold text-stone-900">{item.quantity}</span>
+                        <span className="px-2 text-xs font-bold text-stone-900">{item?.quantity || 1}</span>
                         <button
-                          id={`inc-qty-${item.product.id}`}
-                          onClick={() => onUpdateQuantity(item.product.id, 1)}
+                          id={`inc-qty-${item?.product?.id}`}
+                          onClick={() => item?.product?.id && onUpdateQuantity(item.product.id, 1)}
                           className="p-1 hover:bg-stone-100 text-stone-700"
                         >
                           <Plus className="w-3 h-3" />
@@ -185,7 +185,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
                       <div className="text-right">
                         <span className="font-bold text-sm text-stone-900">
-                          PKR {(item.product.salePrice * item.quantity).toLocaleString()}
+                          PKR {((item?.product?.salePrice ?? 0) * (item?.quantity ?? 1)).toLocaleString()}
                         </span>
                       </div>
                     </div>
@@ -234,13 +234,13 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               <div className="space-y-1.5 text-xs text-stone-600 pt-2 border-t border-stone-200">
                 <div className="flex justify-between">
                   <span>Subtotal</span>
-                  <span className="font-semibold text-stone-900">PKR {subtotal.toLocaleString()}</span>
+                  <span className="font-semibold text-stone-900">PKR {(subtotal ?? 0).toLocaleString()}</span>
                 </div>
 
                 {discountAmount > 0 && (
                   <div className="flex justify-between text-emerald-700 font-medium">
                     <span>Discount ({discountPercent}%)</span>
-                    <span>- PKR {discountAmount.toLocaleString()}</span>
+                    <span>- PKR {(discountAmount ?? 0).toLocaleString()}</span>
                   </div>
                 )}
 
@@ -250,14 +250,14 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     {shippingFee === 0 ? (
                       <span className="text-emerald-700 font-bold uppercase">FREE</span>
                     ) : (
-                      `PKR ${shippingFee.toLocaleString()}`
+                      `PKR ${(shippingFee ?? 0).toLocaleString()}`
                     )}
                   </span>
                 </div>
 
                 <div className="flex justify-between text-sm font-extrabold text-stone-900 pt-2 border-t border-stone-200">
                   <span>Total (Cash on Delivery)</span>
-                  <span className="text-amber-900">PKR {grandTotal.toLocaleString()}</span>
+                  <span className="text-amber-900">PKR {(grandTotal ?? 0).toLocaleString()}</span>
                 </div>
               </div>
 

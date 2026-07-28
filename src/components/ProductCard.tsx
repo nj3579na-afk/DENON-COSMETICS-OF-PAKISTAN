@@ -22,7 +22,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   whatsappNumber,
 }) => {
   const whatsappMessage = encodeURIComponent(
-    `Hello Denon Cosmetics! I would like to place an order for:\n\n*Product:* ${product.name}\n*Price:* PKR ${product.salePrice.toLocaleString()}\n*Category:* ${product.category}\n\nPlease confirm availability for Cash on Delivery in Pakistan.`
+    `Hello Denon Cosmetics! I would like to place an order for:\n\n*Product:* ${product.name}\n*Price:* PKR ${(product.salePrice ?? 0).toLocaleString()}\n*Category:* ${product.category}\n\nPlease confirm availability for Cash on Delivery in Pakistan.`
   );
   const cleanWhatsappNumber = (whatsappNumber || '').replace(/[^0-9]/g, '');
   const whatsappUrl = `https://wa.me/${cleanWhatsappNumber}?text=${whatsappMessage}`;
@@ -120,11 +120,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         <div className="pt-2 border-t border-stone-100">
           <div className="flex items-baseline gap-2">
             <span className="font-sans text-lg font-extrabold text-stone-900">
-              PKR {product.salePrice.toLocaleString()}
+              PKR {(product.salePrice ?? 0).toLocaleString()}
             </span>
-            {product.retailPrice > product.salePrice && (
+            {Boolean(product.retailPrice && product.retailPrice > (product.salePrice ?? 0)) && (
               <span className="font-sans text-xs text-stone-400 line-through">
-                PKR {product.retailPrice.toLocaleString()}
+                PKR {(product.retailPrice ?? 0).toLocaleString()}
               </span>
             )}
           </div>

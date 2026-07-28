@@ -23,7 +23,7 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
   if (!product) return null;
 
   const whatsappMessage = encodeURIComponent(
-    `Hello Denon Cosmetics! I would like to order:\n\n*Product:* ${product.name}\n*Quantity:* ${quantity}\n*Price:* PKR ${(product.salePrice * quantity).toLocaleString()}\n\nPlease deliver via Cash on Delivery in Pakistan.`
+    `Hello Denon Cosmetics! I would like to order:\n\n*Product:* ${product.name}\n*Quantity:* ${quantity}\n*Price:* PKR ${((product.salePrice ?? 0) * (quantity ?? 1)).toLocaleString()}\n\nPlease deliver via Cash on Delivery in Pakistan.`
   );
   const cleanWhatsappNumber = (whatsappNumber || '').replace(/[^0-9]/g, '');
   const whatsappUrl = `https://wa.me/${cleanWhatsappNumber}?text=${whatsappMessage}`;
@@ -79,11 +79,11 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
               {/* Price */}
               <div className="mt-3 flex items-baseline gap-3">
                 <span className="font-sans text-2xl font-extrabold text-stone-900">
-                  PKR {product.salePrice.toLocaleString()}
+                  PKR {(product.salePrice ?? 0).toLocaleString()}
                 </span>
-                {product.retailPrice > product.salePrice && (
+                {Boolean(product.retailPrice && product.retailPrice > (product.salePrice ?? 0)) && (
                   <span className="text-sm text-stone-400 line-through">
-                    PKR {product.retailPrice.toLocaleString()}
+                    PKR {(product.retailPrice ?? 0).toLocaleString()}
                   </span>
                 )}
                 <span className="bg-amber-100 text-amber-900 text-xs font-bold px-2 py-0.5 rounded-md">

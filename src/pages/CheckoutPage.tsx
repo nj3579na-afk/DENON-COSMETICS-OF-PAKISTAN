@@ -114,7 +114,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
 
   if (completedOrder) {
     const whatsappOrderText = encodeURIComponent(
-      `Hello Denon Cosmetics! My Cash on Delivery order #${completedOrder.id} has been placed.\n\n*Customer:* ${completedOrder.customer.fullName}\n*Phone:* ${completedOrder.customer.phone}\n*City:* ${completedOrder.customer.city}\n*Total:* PKR ${completedOrder.total.toLocaleString()}\n\nPlease dispatch my order.`
+      `Hello Denon Cosmetics! My Cash on Delivery order #${completedOrder.id} has been placed.\n\n*Customer:* ${completedOrder.customer.fullName}\n*Phone:* ${completedOrder.customer.phone}\n*City:* ${completedOrder.customer.city}\n*Total:* PKR ${(completedOrder.total ?? 0).toLocaleString()}\n\nPlease dispatch my order.`
     );
     const cleanWhatsappNumber = (settings?.whatsappNumber || '').replace(/[^0-9]/g, '');
     const whatsappOrderUrl = `https://wa.me/${cleanWhatsappNumber}?text=${whatsappOrderText}`;
@@ -159,7 +159,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
             </p>
             <p className="flex justify-between pt-2 border-t border-stone-200 font-bold text-sm">
               <span>Total Payable (COD):</span>
-              <span className="text-amber-900">PKR {completedOrder.total.toLocaleString()}</span>
+              <span className="text-amber-900">PKR {(completedOrder.total ?? 0).toLocaleString()}</span>
             </p>
           </div>
 
@@ -544,7 +544,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
               type="submit"
               className="w-full py-4 bg-stone-900 text-amber-200 hover:bg-stone-800 font-bold text-xs uppercase tracking-wider rounded-2xl transition-all shadow-xl flex items-center justify-center gap-2"
             >
-              <span>Confirm Order (PKR {grandTotal.toLocaleString()})</span>
+              <span>Confirm Order (PKR {(grandTotal ?? 0).toLocaleString()})</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
@@ -579,13 +579,13 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
             <div className="space-y-2 text-xs border-t border-stone-800 pt-4 text-stone-300">
               <div className="flex justify-between">
                 <span>Subtotal</span>
-                <span>PKR {subtotal.toLocaleString()}</span>
+                <span>PKR {(subtotal ?? 0).toLocaleString()}</span>
               </div>
 
               {discountAmount > 0 && (
                 <div className="flex justify-between text-emerald-400 font-semibold">
                   <span>Coupon Discount</span>
-                  <span>- PKR {discountAmount.toLocaleString()}</span>
+                  <span>- PKR {(discountAmount ?? 0).toLocaleString()}</span>
                 </div>
               )}
 
@@ -595,14 +595,14 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                   {shippingFee === 0 ? (
                     <strong className="text-emerald-400 uppercase">FREE</strong>
                   ) : (
-                    `PKR ${shippingFee.toLocaleString()}`
+                    `PKR ${(shippingFee ?? 0).toLocaleString()}`
                   )}
                 </span>
               </div>
 
               <div className="flex justify-between text-base font-extrabold text-amber-200 pt-2 border-t border-stone-800">
                 <span>Total Amount (COD)</span>
-                <span>PKR {grandTotal.toLocaleString()}</span>
+                <span>PKR {(grandTotal ?? 0).toLocaleString()}</span>
               </div>
             </div>
 

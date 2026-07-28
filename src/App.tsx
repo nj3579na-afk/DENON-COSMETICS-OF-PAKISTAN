@@ -375,7 +375,7 @@ export function App() {
                       </div>
                     </div>
                     <span className="font-extrabold text-xs text-stone-900">
-                      PKR {p.salePrice.toLocaleString()}
+                      PKR {(p.salePrice ?? 0).toLocaleString()}
                     </span>
                   </div>
                 ))
