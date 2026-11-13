@@ -9,6 +9,7 @@ interface ShopPageProps {
   onAddToCart: (product: Product) => void;
   onBuyNow: (product: Product) => void;
   onQuickView: (product: Product) => void;
+  onOpenReviews?: (product: Product) => void;
   wishlistIds: string[];
   onToggleWishlist: (productId: string) => void;
   settings: AdminSettings;
@@ -22,6 +23,7 @@ export const ShopPage: React.FC<ShopPageProps> = ({
   onAddToCart,
   onBuyNow,
   onQuickView,
+  onOpenReviews,
   wishlistIds,
   onToggleWishlist,
   settings,
@@ -179,6 +181,7 @@ export const ShopPage: React.FC<ShopPageProps> = ({
               onAddToCart={onAddToCart}
               onBuyNow={onBuyNow}
               onQuickView={onQuickView}
+              onOpenReviews={onOpenReviews}
               isWishlisted={wishlistIds.includes(product.id)}
               onToggleWishlist={onToggleWishlist}
               whatsappNumber={settings.whatsappNumber}

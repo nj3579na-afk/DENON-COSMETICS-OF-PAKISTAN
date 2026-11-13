@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { ProductCard } from './components/ProductCard';
@@ -21,8 +21,8 @@ import { BlogPage } from './pages/BlogPage';
 import { PoliciesPage } from './pages/PoliciesPage';
 import { AdminPage } from './pages/AdminPage';
 
-import { Product, CartItem, CategoryType, Order, AdminSettings, CategoryItem } from './types';
-import { getStoredProducts, getAdminSettings, getWishlistIds, toggleWishlistId, initializeStorage, getStoredCategories, subscribeToSupabaseRealtime, syncAllFromSupabase } from './services/api';
+import { Product, CartItem, CategoryType, Order, AdminSettings, CategoryItem, Review } from './types';
+import { getStoredProducts, getAdminSettings, getWishlistIds, toggleWishlistId, initializeStorage, getStoredCategories, getStoredReviews, applyLiveReviewsToProducts, subscribeToSupabaseRealtime, syncAllFromSupabase } from './services/api';
 import { Search, X } from 'lucide-react';
 
 export function App() {
@@ -53,7 +53,9 @@ export function App() {
   const [appliedDiscount, setAppliedDiscount] = useState(0);
 
   const [wishlistIds, setWishlistIds] = useState<string[]>([]);
+  const [reviews, setReviews] = useState<Review[]>(() => getStoredReviews());
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
+  const [quickViewInitialTab, setQuickViewInitialTab] = useState<'benefits' | 'ingredients' | 'howToUse' | 'reviews'>('benefits');
 
   // Search Modal
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -76,12 +78,14 @@ export function App() {
     setCategories(getStoredCategories());
     setWishlistIds(getWishlistIds());
     setSettings(getAdminSettings());
+    setReviews(getStoredReviews());
 
     const refreshDataState = () => {
       setProducts(getStoredProducts());
       setCategories(getStoredCategories());
       setWishlistIds(getWishlistIds());
       setSettings(getAdminSettings());
+      setReviews(getStoredReviews());
     };
 
     // Perform background sync from Supabase
@@ -168,9 +172,24 @@ export function App() {
     setCartItems([]);
   };
 
+  const productsWithLiveReviews = useMemo(
+    () => applyLiveReviewsToProducts(products, reviews),
+    [products, reviews]
+  );
+
+  const handleOpenQuickView = (product: Product) => {
+    setQuickViewInitialTab('benefits');
+    setQuickViewProduct(product);
+  };
+
+  const handleOpenProductReviews = (product: Product) => {
+    setQuickViewInitialTab('reviews');
+    setQuickViewProduct(product);
+  };
+
   const totalCartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
 
-  const searchedProducts = products.filter(
+  const searchedProducts = productsWithLiveReviews.filter(
     (p) =>
       p.name.toLowerCase().includes(globalSearch.toLowerCase()) ||
       p.description.toLowerCase().includes(globalSearch.toLowerCase()) ||
@@ -194,25 +213,29 @@ export function App() {
       <main className="flex-1">
         {activeTab === 'home' && (
           <HomePage
-            products={products}
+            products={productsWithLiveReviews}
             setActiveTab={setActiveTab}
             onAddToCart={handleAddToCart}
             onBuyNow={handleBuyNow}
-            onQuickView={setQuickViewProduct}
+            onQuickView={handleOpenQuickView}
+            onOpenReviews={handleOpenProductReviews}
             wishlistIds={wishlistIds}
             onToggleWishlist={handleToggleWishlist}
             settings={settings}
             setSelectedCategory={setSelectedCategory}
             categories={categories}
+            reviews={reviews}
+            onReviewSubmitted={setReviews}
           />
         )}
 
         {activeTab === 'shop' && (
           <ShopPage
-            products={products}
+            products={productsWithLiveReviews}
             onAddToCart={handleAddToCart}
             onBuyNow={handleBuyNow}
-            onQuickView={setQuickViewProduct}
+            onQuickView={handleOpenQuickView}
+            onOpenReviews={handleOpenProductReviews}
             wishlistIds={wishlistIds}
             onToggleWishlist={handleToggleWishlist}
             settings={settings}
@@ -224,7 +247,7 @@ export function App() {
 
         {activeTab === 'categories' && (
           <CategoriesPage
-            products={products}
+            products={productsWithLiveReviews}
             setActiveTab={setActiveTab}
             setSelectedCategory={setSelectedCategory}
             categories={categories}
@@ -233,10 +256,10 @@ export function App() {
 
         {activeTab === 'ai-skin' && (
           <AISkinConsultationPage
-            products={products}
+            products={productsWithLiveReviews}
             onAddToCart={handleAddToCart}
             onBuyNow={handleBuyNow}
-            onQuickView={setQuickViewProduct}
+            onQuickView={handleOpenQuickView}
             wishlistIds={wishlistIds}
             onToggleWishlist={handleToggleWishlist}
             whatsappNumber={settings.whatsappNumber}
@@ -257,10 +280,10 @@ export function App() {
 
         {activeTab === 'account' && (
           <CustomerAccountPage
-            products={products}
+            products={productsWithLiveReviews}
             onAddToCart={handleAddToCart}
             onBuyNow={handleBuyNow}
-            onQuickView={setQuickViewProduct}
+            onQuickView={handleOpenQuickView}
             wishlistIds={wishlistIds}
             onToggleWishlist={handleToggleWishlist}
             whatsappNumber={settings.whatsappNumber}
@@ -316,6 +339,9 @@ export function App() {
         onAddToCart={handleAddToCart}
         onBuyNow={handleBuyNow}
         whatsappNumber={settings.whatsappNumber}
+        reviews={reviews}
+        onReviewSubmitted={setReviews}
+        initialTab={quickViewInitialTab}
       />
 
       {/* Floating WhatsApp Button */}
@@ -323,9 +349,9 @@ export function App() {
 
       {/* AI Skincare Chatbot Assistant */}
       <AIChatbot
-        products={products}
+        products={productsWithLiveReviews}
         onSelectProduct={(p) => {
-          setQuickViewProduct(p);
+          handleOpenQuickView(p);
         }}
         whatsappNumber={settings.whatsappNumber}
       />
@@ -363,7 +389,7 @@ export function App() {
                   <div
                     key={p.id}
                     onClick={() => {
-                      setQuickViewProduct(p);
+                      handleOpenQuickView(p);
                       setIsSearchOpen(false);
                     }}
                     className="flex items-center justify-between p-3 rounded-xl hover:bg-stone-50 cursor-pointer border border-stone-100"

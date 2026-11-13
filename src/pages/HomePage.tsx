@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { ArrowRight, Sparkles, ShieldCheck, Award, Heart, ShoppingBag, Star, Truck, CheckCircle2, ChevronRight } from 'lucide-react';
-import { Product, AdminSettings, CategoryType, CategoryItem } from '../types';
-import { getStoredCategories } from '../services/api';
+import { ArrowRight, Sparkles, ShieldCheck, Award, Heart, ShoppingBag, Star, Truck, CheckCircle2, ChevronRight, Send, MessageSquare } from 'lucide-react';
+import { Product, AdminSettings, CategoryType, CategoryItem, Review } from '../types';
+import { getStoredCategories, submitCustomerReview } from '../services/api';
 import { ProductCard } from '../components/ProductCard';
 
 interface HomePageProps {
@@ -10,11 +10,14 @@ interface HomePageProps {
   onAddToCart: (product: Product) => void;
   onBuyNow: (product: Product) => void;
   onQuickView: (product: Product) => void;
+  onOpenReviews?: (product: Product) => void;
   wishlistIds: string[];
   onToggleWishlist: (productId: string) => void;
   settings: AdminSettings;
   setSelectedCategory: (cat: CategoryType) => void;
   categories?: CategoryItem[];
+  reviews?: Review[];
+  onReviewSubmitted?: (updatedReviews: Review[]) => void;
 }
 
 export const HomePage: React.FC<HomePageProps> = ({
@@ -23,11 +26,14 @@ export const HomePage: React.FC<HomePageProps> = ({
   onAddToCart,
   onBuyNow,
   onQuickView,
+  onOpenReviews,
   wishlistIds,
   onToggleWishlist,
   settings,
   setSelectedCategory,
   categories,
+  reviews = [],
+  onReviewSubmitted,
 }) => {
   const featuredProducts = products.filter((p) => p.isFeatured).slice(0, 4);
   const bestSellers = products.filter((p) => p.isBestSeller).slice(0, 4);
@@ -35,6 +41,72 @@ export const HomePage: React.FC<HomePageProps> = ({
 
   const categoryList = categories && categories.length > 0 ? categories : getStoredCategories();
   const displayCategories = categoryList.filter((c) => c.isActive !== false);
+
+  // Live Customer Reviews State
+  const [reviewFilter, setReviewFilter] = useState<'all' | 'brand' | 'product'>('all');
+  const [reviewTarget, setReviewTarget] = useState<string>('brand-general');
+  const [customerName, setCustomerName] = useState('');
+  const [customerCity, setCustomerCity] = useState('');
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [reviewSuccess, setReviewSuccess] = useState('');
+
+  const liveReviews = reviews.filter((r) => r.status !== 'Rejected');
+  const filteredLiveReviews = liveReviews.filter((r) => {
+    if (reviewFilter === 'brand') {
+      return r.reviewType === 'brand' || r.reviewType === 'delivery' || r.productId === 'brand-general' || r.productId === 'service-delivery';
+    }
+    if (reviewFilter === 'product') {
+      return r.productId !== 'brand-general' && r.productId !== 'service-delivery';
+    }
+    return true;
+  });
+
+  const avgLiveRating =
+    liveReviews.length > 0
+      ? (liveReviews.reduce((sum, r) => sum + (Number(r.rating) || 0), 0) / liveReviews.length).toFixed(1)
+      : null;
+
+  const handleWebsiteReviewSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customerName.trim() || !reviewComment.trim() || isSubmittingReview) return;
+    setIsSubmittingReview(true);
+    setReviewSuccess('');
+
+    try {
+      let reviewType: 'product' | 'brand' | 'delivery' = 'brand';
+      let productName = `${settings.brandName || 'DENON COSMETICS'} (Brand Experience)`;
+
+      if (reviewTarget === 'service-delivery') {
+        reviewType = 'delivery';
+        productName = 'Delivery & Customer Service';
+      } else if (reviewTarget !== 'brand-general') {
+        reviewType = 'product';
+        const matched = products.find((p) => p.id === reviewTarget);
+        productName = matched?.name || reviewTarget;
+      }
+
+      const updated = await submitCustomerReview({
+        productId: reviewTarget,
+        productName,
+        reviewType,
+        customerName,
+        city: customerCity,
+        rating: reviewRating,
+        comment: reviewComment,
+      });
+
+      if (onReviewSubmitted) onReviewSubmitted(updated);
+      setCustomerName('');
+      setCustomerCity('');
+      setReviewRating(5);
+      setReviewComment('');
+      setReviewSuccess('Thank you! Your real review is now live on the website.');
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
 
   return (
     <div className="space-y-16 pb-12">
@@ -210,6 +282,7 @@ export const HomePage: React.FC<HomePageProps> = ({
               onAddToCart={onAddToCart}
               onBuyNow={onBuyNow}
               onQuickView={onQuickView}
+              onOpenReviews={onOpenReviews}
               isWishlisted={wishlistIds.includes(product.id)}
               onToggleWishlist={onToggleWishlist}
               whatsappNumber={settings.whatsappNumber}
@@ -248,6 +321,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                 onAddToCart={onAddToCart}
                 onBuyNow={onBuyNow}
                 onQuickView={onQuickView}
+                onOpenReviews={onOpenReviews}
                 isWishlisted={wishlistIds.includes(product.id)}
                 onToggleWishlist={onToggleWishlist}
                 whatsappNumber={settings.whatsappNumber}
@@ -304,67 +378,237 @@ export const HomePage: React.FC<HomePageProps> = ({
         </div>
       </section>
 
-      {/* Customer Reviews Section */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-        <div className="text-center max-w-xl mx-auto space-y-1">
-          <span className="text-xs font-bold uppercase tracking-widest text-amber-800">
-            REAL REVIEWS FROM PAKISTAN
-          </span>
-          <h2 className="font-serif text-2xl sm:text-3xl font-bold text-stone-900">
-            Loved By Thousands Across Pakistan
-          </h2>
+      {/* Live Customer Reviews Section */}
+      <section id="customer-reviews" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-stone-200 pb-5">
+          <div className="space-y-1">
+            <span className="text-xs font-bold uppercase tracking-widest text-amber-800">
+              LIVE CUSTOMER REVIEWS
+            </span>
+            <h2 className="font-serif text-2xl sm:text-3xl font-bold text-stone-900">
+              Real Customer Feedback & Brand Reviews
+            </h2>
+            <p className="text-xs text-stone-600">
+              {liveReviews.length > 0
+                ? `${avgLiveRating} / 5.0 average rating across ${liveReviews.length} live customer ${liveReviews.length === 1 ? 'review' : 'reviews'}`
+                : 'Share your real experience with our brand, delivery service, or any product.'}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setReviewFilter('all')}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-colors ${
+                reviewFilter === 'all'
+                  ? 'bg-stone-900 text-amber-200'
+                  : 'bg-white border border-stone-200 text-stone-700 hover:bg-stone-100'
+              }`}
+            >
+              All ({liveReviews.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setReviewFilter('brand')}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-colors ${
+                reviewFilter === 'brand'
+                  ? 'bg-stone-900 text-amber-200'
+                  : 'bg-white border border-stone-200 text-stone-700 hover:bg-stone-100'
+              }`}
+            >
+              Brand & Service
+            </button>
+            <button
+              type="button"
+              onClick={() => setReviewFilter('product')}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-colors ${
+                reviewFilter === 'product'
+                  ? 'bg-stone-900 text-amber-200'
+                  : 'bg-white border border-stone-200 text-stone-700 hover:bg-stone-100'
+              }`}
+            >
+              Product Reviews
+            </button>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-xs space-y-3">
-            <div className="flex text-amber-400">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} className="w-4 h-4 fill-amber-400" />
-              ))}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+          {/* Write a Live Review Form */}
+          <form
+            onSubmit={handleWebsiteReviewSubmit}
+            className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm space-y-4"
+          >
+            <div className="flex items-center gap-2 border-b border-stone-100 pb-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-900 flex items-center justify-center">
+                <MessageSquare className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="font-serif text-base font-bold text-stone-900">Write a Live Review</h3>
+                <p className="text-[11px] text-stone-500">Appears live for all shoppers</p>
+              </div>
             </div>
-            <p className="text-xs text-stone-700 italic leading-relaxed">
-              "Denon Rice Face Wash removed my stubborn acne spots in just 1 week. My skin feels fresh, hydrated, and so fair!"
-            </p>
-            <div className="pt-2 border-t border-stone-100 flex justify-between items-center text-xs">
-              <span className="font-bold text-stone-900">Saima Khan (Lahore)</span>
-              <span className="text-emerald-700 font-semibold flex items-center gap-1 text-[10px]">
-                <CheckCircle2 className="w-3 h-3" /> Verified Buyer
-              </span>
-            </div>
-          </div>
 
-          <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-xs space-y-3">
-            <div className="flex text-amber-400">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} className="w-4 h-4 fill-amber-400" />
-              ))}
+            <div className="space-y-1">
+              <label className="block text-xs font-bold text-stone-700">Review About *</label>
+              <select
+                value={reviewTarget}
+                onChange={(e) => setReviewTarget(e.target.value)}
+                className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs font-semibold text-stone-800 focus:ring-1 focus:ring-amber-800 focus:outline-hidden"
+              >
+                <option value="brand-general">{settings.brandName || 'DENON COSMETICS'} — Brand & Quality</option>
+                <option value="service-delivery">Delivery, Packaging & Customer Service</option>
+                {products.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    Product: {p.name}
+                  </option>
+                ))}
+              </select>
             </div>
-            <p className="text-xs text-stone-700 italic leading-relaxed">
-              "Best acne cream in Pakistan! My pimples dried out within 2 days. Fast Cash on Delivery in Islamabad."
-            </p>
-            <div className="pt-2 border-t border-stone-100 flex justify-between items-center text-xs">
-              <span className="font-bold text-stone-900">Muhammad Hamza (Islamabad)</span>
-              <span className="text-emerald-700 font-semibold flex items-center gap-1 text-[10px]">
-                <CheckCircle2 className="w-3 h-3" /> Verified Buyer
-              </span>
-            </div>
-          </div>
 
-          <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-xs space-y-3">
-            <div className="flex text-amber-400">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} className="w-4 h-4 fill-amber-400" />
-              ))}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="block text-xs font-bold text-stone-700">Your Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Ayesha Khan"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs focus:ring-1 focus:ring-amber-800 focus:outline-hidden"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="block text-xs font-bold text-stone-700">City (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Lahore"
+                  value={customerCity}
+                  onChange={(e) => setCustomerCity(e.target.value)}
+                  className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs focus:ring-1 focus:ring-amber-800 focus:outline-hidden"
+                />
+              </div>
             </div>
-            <p className="text-xs text-stone-700 italic leading-relaxed">
-              "Zero pain and zero burning with Denon 4D Hair Removing Spray! Worked in 5 minutes on my arms."
-            </p>
-            <div className="pt-2 border-t border-stone-100 flex justify-between items-center text-xs">
-              <span className="font-bold text-stone-900">Fatima Zafar (Karachi)</span>
-              <span className="text-emerald-700 font-semibold flex items-center gap-1 text-[10px]">
-                <CheckCircle2 className="w-3 h-3" /> Verified Buyer
-              </span>
+
+            <div className="space-y-1">
+              <label className="block text-xs font-bold text-stone-700">Your Rating *</label>
+              <div className="flex items-center gap-1.5">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setReviewRating(star)}
+                    className="p-1 rounded-lg hover:bg-amber-50 transition-colors cursor-pointer"
+                    title={`${star} Star`}
+                  >
+                    <Star
+                      className={`w-5 h-5 ${
+                        star <= reviewRating ? 'fill-amber-400 text-amber-400' : 'text-stone-300'
+                      }`}
+                    />
+                  </button>
+                ))}
+                <span className="text-xs font-bold text-stone-600 ml-2">{reviewRating} / 5</span>
+              </div>
             </div>
+
+            <div className="space-y-1">
+              <label className="block text-xs font-bold text-stone-700">Your Review *</label>
+              <textarea
+                required
+                rows={3}
+                placeholder="Share your honest experience with our brand, quality, or delivery..."
+                value={reviewComment}
+                onChange={(e) => setReviewComment(e.target.value)}
+                className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs focus:ring-1 focus:ring-amber-800 focus:outline-hidden"
+              />
+            </div>
+
+            {reviewSuccess && (
+              <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-semibold text-emerald-800 flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>{reviewSuccess}</span>
+              </div>
+            )}
+
+            <button
+              id="submit-website-review-btn"
+              type="submit"
+              disabled={isSubmittingReview}
+              className="w-full py-3 bg-stone-900 text-amber-200 text-xs font-bold rounded-xl hover:bg-stone-800 transition-colors flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
+            >
+              <Send className="w-3.5 h-3.5" />
+              <span>{isSubmittingReview ? 'Submitting Review...' : 'Submit Live Review'}</span>
+            </button>
+          </form>
+
+          {/* Live Customer Reviews Feed */}
+          <div className="lg:col-span-2">
+            {filteredLiveReviews.length === 0 ? (
+              <div className="bg-white p-10 rounded-2xl border border-dashed border-stone-300 text-center space-y-2">
+                <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-800 flex items-center justify-center mx-auto">
+                  <Star className="w-6 h-6" />
+                </div>
+                <h3 className="font-serif text-lg font-bold text-stone-900">No Customer Reviews Yet</h3>
+                <p className="text-xs text-stone-500 max-w-md mx-auto">
+                  Be the first real customer to leave a live review about {settings.brandName || 'DENON COSMETICS'} or any of our skincare products using the form.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {filteredLiveReviews.map((review) => {
+                  const matchedProduct = products.find((p) => p.id === review.productId);
+                  const subjectLabel =
+                    review.productName ||
+                    matchedProduct?.name ||
+                    (review.productId === 'service-delivery'
+                      ? 'Delivery & Customer Service'
+                      : `${settings.brandName || 'DENON COSMETICS'} Brand`);
+
+                  return (
+                    <div
+                      key={review.id}
+                      className="bg-white p-5 rounded-2xl border border-stone-200 shadow-xs flex flex-col justify-between space-y-3"
+                    >
+                      <div className="space-y-2.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex text-amber-400">
+                            {[...Array(5)].map((_, i) => (
+                              <Star
+                                key={i}
+                                className={`w-4 h-4 ${
+                                  i < review.rating ? 'fill-amber-400 text-amber-400' : 'text-stone-200'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-200 truncate max-w-[180px]">
+                            {subjectLabel}
+                          </span>
+                        </div>
+
+                        <p className="text-xs text-stone-700 leading-relaxed">"{review.comment}"</p>
+
+                        {review.adminReply && (
+                          <div className="bg-amber-50/80 p-2.5 rounded-xl border border-amber-200 text-[11px] text-amber-950">
+                            <strong>{settings.brandName || 'DENON'} Reply:</strong> {review.adminReply}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="pt-2.5 border-t border-stone-100 flex justify-between items-center text-xs">
+                        <div>
+                          <span className="font-bold text-stone-900">{review.customerName}</span>
+                          <span className="block text-[10px] text-stone-400">{review.date}</span>
+                        </div>
+                        <span className="text-emerald-700 font-semibold flex items-center gap-1 text-[10px]">
+                          <CheckCircle2 className="w-3 h-3" /> Live Customer
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       </section>

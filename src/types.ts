@@ -35,7 +35,10 @@ export interface CartItem {
 export interface Review {
   id: string;
   productId: string;
+  productName?: string;
+  reviewType?: 'product' | 'brand' | 'delivery';
   customerName: string;
+  city?: string;
   rating: number;
   date: string;
   comment: string;

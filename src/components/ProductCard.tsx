@@ -7,6 +7,7 @@ interface ProductCardProps {
   onAddToCart: (product: Product) => void;
   onBuyNow: (product: Product) => void;
   onQuickView: (product: Product) => void;
+  onOpenReviews?: (product: Product) => void;
   isWishlisted: boolean;
   onToggleWishlist: (productId: string) => void;
   whatsappNumber: string;
@@ -17,6 +18,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   onAddToCart,
   onBuyNow,
   onQuickView,
+  onOpenReviews,
   isWishlisted,
   onToggleWishlist,
   whatsappNumber,
@@ -100,10 +102,26 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             <span className="font-semibold tracking-wider text-amber-800 uppercase text-[10px]">
               {product.brand}
             </span>
-            <span className="flex items-center gap-1 text-amber-600 font-bold">
-              <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-              {product.rating} ({product.reviewCount})
-            </span>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onOpenReviews) {
+                  onOpenReviews(product);
+                } else {
+                  onQuickView(product);
+                }
+              }}
+              className="flex items-center gap-1 text-amber-700 hover:text-amber-900 font-bold cursor-pointer"
+              title="View & Write Product Reviews"
+            >
+              <Star className={`w-3 h-3 ${product.reviewCount > 0 ? 'fill-amber-400 text-amber-400' : 'text-stone-300'}`} />
+              <span>
+                {product.reviewCount > 0
+                  ? `${product.rating.toFixed(1)} (${product.reviewCount})`
+                  : 'Reviews (0)'}
+              </span>
+            </button>
           </div>
 
           <h3

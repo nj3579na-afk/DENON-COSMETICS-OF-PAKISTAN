@@ -47,7 +47,11 @@ let cachedProducts: Product[] = INITIAL_PRODUCTS;
 let cachedCategories: CategoryItem[] = INITIAL_CATEGORIES;
 let cachedSettings: AdminSettings = INITIAL_ADMIN_SETTINGS;
 let cachedOrders: Order[] = INITIAL_ORDERS;
-let cachedReviews: Review[] = INITIAL_REVIEWS;
+const DEMO_REVIEW_IDS = new Set(['rev-1', 'rev-2', 'rev-3', 'rev-4']);
+const stripDemoReviews = (list: Review[]): Review[] =>
+  Array.isArray(list) ? list.filter((r) => r && !DEMO_REVIEW_IDS.has(r.id)) : [];
+
+let cachedReviews: Review[] = [];
 let cachedCustomers: Customer[] = INITIAL_CUSTOMERS;
 let cachedAuditLogs: AuditLog[] = INITIAL_AUDIT_LOGS;
 let cachedAIKnowledge: AIKnowledgeItem[] = INITIAL_AI_KNOWLEDGE;
@@ -323,8 +327,13 @@ export async function syncAllFromSupabase(): Promise<void> {
       updated = true;
     }
     if (reviewsRes.success && reviewsRes.data) {
-      cachedReviews = reviewsRes.data;
+      const cleaned = stripDemoReviews(reviewsRes.data);
+      const hadDemoReviews = cleaned.length !== reviewsRes.data.length;
+      cachedReviews = cleaned;
       saveToLocalStorage('denon_reviews', cachedReviews);
+      if (hadDemoReviews) {
+        saveToSupabase('reviews', 'reviews', cachedReviews).catch(() => {});
+      }
       updated = true;
     }
     if (customersRes.success && customersRes.data) {
@@ -406,7 +415,10 @@ export function initializeStorage() {
       if (s) cachedSettings = JSON.parse(s);
 
       const r = localStorage.getItem('denon_reviews');
-      if (r) cachedReviews = JSON.parse(r);
+      if (r) {
+        cachedReviews = stripDemoReviews(JSON.parse(r));
+        saveToLocalStorage('denon_reviews', cachedReviews);
+      }
 
       const cust = localStorage.getItem('denon_customers');
       if (cust) cachedCustomers = JSON.parse(cust);
@@ -515,18 +527,104 @@ export function getStoredReviews(): Review[] {
 }
 
 export function addReview(review: Review): Review[] {
-  cachedReviews = [review, ...cachedReviews];
+  cachedReviews = [review, ...cachedReviews.filter((r) => r.id !== review.id)];
   saveToLocalStorage('denon_reviews', cachedReviews);
   notifyDataUpdated();
-  saveToSupabase('reviews', 'reviews', cachedReviews);
+  saveToSupabase('reviews', 'reviews', cachedReviews).catch(() => {});
   return cachedReviews;
 }
 
-export function saveReviews(reviews: Review[]): void {
-  cachedReviews = reviews;
-  saveToLocalStorage('denon_reviews', reviews);
+export async function submitCustomerReview(input: {
+  productId: string;
+  productName?: string;
+  reviewType?: 'product' | 'brand' | 'delivery';
+  customerName: string;
+  city?: string;
+  rating: number;
+  comment: string;
+}): Promise<Review[]> {
+  const newReview: Review = {
+    id: `rev-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    productId: input.productId,
+    productName: input.productName,
+    reviewType: input.reviewType || 'product',
+    customerName: input.city?.trim()
+      ? `${input.customerName.trim()} (${input.city.trim()})`
+      : input.customerName.trim(),
+    city: input.city?.trim() || undefined,
+    rating: Math.min(5, Math.max(1, Number(input.rating) || 5)),
+    date: new Date().toISOString().split('T')[0],
+    comment: input.comment.trim(),
+    verifiedPurchase: true,
+    status: 'Approved',
+  };
+
+  // Immediate local update
+  cachedReviews = [newReview, ...stripDemoReviews(cachedReviews)];
+  saveToLocalStorage('denon_reviews', cachedReviews);
   notifyDataUpdated();
-  saveToSupabase('reviews', 'reviews', reviews);
+
+  // Merge with latest Supabase reviews so concurrent customer reviews are never lost
+  if (supabase) {
+    try {
+      const latestRes = await fetchFromSupabase<Review[]>('reviews', 'reviews');
+      const existingRemote = latestRes.success && Array.isArray(latestRes.data)
+        ? stripDemoReviews(latestRes.data)
+        : [];
+
+      const seen = new Set<string>([newReview.id]);
+      const merged: Review[] = [newReview];
+      for (const item of [...existingRemote, ...cachedReviews]) {
+        if (item && item.id && !seen.has(item.id) && !DEMO_REVIEW_IDS.has(item.id)) {
+          seen.add(item.id);
+          merged.push(item);
+        }
+      }
+
+      cachedReviews = merged;
+      saveToLocalStorage('denon_reviews', cachedReviews);
+
+      const { error: upsertErr } = await supabase
+        .from('denon_store')
+        .upsert(
+          { key: 'reviews', value: merged, updated_at: new Date().toISOString() },
+          { onConflict: 'key' }
+        );
+
+      if (upsertErr) {
+        console.warn('Supabase review save notice:', upsertErr.message);
+      }
+      notifyDataUpdated();
+    } catch (err) {
+      console.warn('Supabase live review sync notice:', err);
+    }
+  }
+
+  return cachedReviews;
+}
+
+export function applyLiveReviewsToProducts(products: Product[], reviews: Review[]): Product[] {
+  const liveReviews = reviews.filter((r) => r.status !== 'Rejected');
+  return products.map((product) => {
+    const prodReviews = liveReviews.filter((r) => r.productId === product.id);
+    if (prodReviews.length === 0) {
+      return { ...product, rating: 0, reviewCount: 0 };
+    }
+    const avg = prodReviews.reduce((sum, r) => sum + (Number(r.rating) || 0), 0) / prodReviews.length;
+    return {
+      ...product,
+      rating: Number(avg.toFixed(1)),
+      reviewCount: prodReviews.length,
+    };
+  });
+}
+
+export function saveReviews(reviews: Review[]): void {
+  const cleaned = stripDemoReviews(reviews);
+  cachedReviews = cleaned;
+  saveToLocalStorage('denon_reviews', cleaned);
+  notifyDataUpdated();
+  saveToSupabase('reviews', 'reviews', cleaned).catch(() => {});
 }
 
 // Admin Settings

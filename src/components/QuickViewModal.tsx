@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { X, Star, ShoppingBag, MessageCircle, ShieldCheck, CheckCircle2, Truck } from 'lucide-react';
-import { Product } from '../types';
+import React, { useState, useEffect } from 'react';
+import { X, Star, ShoppingBag, MessageCircle, ShieldCheck, CheckCircle2, Send, MessageSquare } from 'lucide-react';
+import { Product, Review } from '../types';
+import { submitCustomerReview } from '../services/api';
 
 interface QuickViewModalProps {
   product: Product | null;
@@ -8,6 +9,9 @@ interface QuickViewModalProps {
   onAddToCart: (product: Product, quantity: number) => void;
   onBuyNow: (product: Product, quantity: number) => void;
   whatsappNumber: string;
+  reviews?: Review[];
+  onReviewSubmitted?: (updatedReviews: Review[]) => void;
+  initialTab?: 'benefits' | 'ingredients' | 'howToUse' | 'reviews';
 }
 
 export const QuickViewModal: React.FC<QuickViewModalProps> = ({
@@ -16,11 +20,63 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
   onAddToCart,
   onBuyNow,
   whatsappNumber,
+  reviews = [],
+  onReviewSubmitted,
+  initialTab = 'benefits',
 }) => {
   const [quantity, setQuantity] = useState(1);
-  const [activeTab, setActiveTab] = useState<'benefits' | 'ingredients' | 'howToUse'>('benefits');
+  const [activeTab, setActiveTab] = useState<'benefits' | 'ingredients' | 'howToUse' | 'reviews'>(initialTab);
+  const [reviewerName, setReviewerName] = useState('');
+  const [reviewerCity, setReviewerCity] = useState('');
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [reviewFeedback, setReviewFeedback] = useState('');
+
+  useEffect(() => {
+    if (product) {
+      setActiveTab(initialTab || 'benefits');
+      setQuantity(1);
+      setReviewFeedback('');
+    }
+  }, [product?.id, initialTab]);
 
   if (!product) return null;
+
+  const productReviews = reviews.filter(
+    (r) => r.productId === product.id && r.status !== 'Rejected'
+  );
+  const liveReviewCount = productReviews.length;
+  const liveRating =
+    liveReviewCount > 0
+      ? (productReviews.reduce((sum, r) => sum + (Number(r.rating) || 0), 0) / liveReviewCount).toFixed(1)
+      : null;
+
+  const handleProductReviewSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reviewerName.trim() || !reviewComment.trim() || isSubmittingReview) return;
+    setIsSubmittingReview(true);
+    setReviewFeedback('');
+    try {
+      const updated = await submitCustomerReview({
+        productId: product.id,
+        productName: product.name,
+        reviewType: 'product',
+        customerName: reviewerName,
+        city: reviewerCity,
+        rating: reviewRating,
+        comment: reviewComment,
+      });
+      if (onReviewSubmitted) onReviewSubmitted(updated);
+      setReviewerName('');
+      setReviewerCity('');
+      setReviewRating(5);
+      setReviewComment('');
+      setReviewFeedback('Thank you! Your live review has been posted.');
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
 
   const whatsappMessage = encodeURIComponent(
     `Hello Denon Cosmetics! I would like to order:\n\n*Product:* ${product.name}\n*Quantity:* ${quantity}\n*Price:* PKR ${((product.salePrice ?? 0) * (quantity ?? 1)).toLocaleString()}\n\nPlease deliver via Cash on Delivery in Pakistan.`
@@ -30,7 +86,7 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl overflow-hidden border border-stone-200 animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl overflow-hidden border border-stone-200 animate-in fade-in zoom-in-95 duration-200 max-h-[92vh] overflow-y-auto">
         {/* Close Button */}
         <button
           id="close-quickview-btn"
@@ -62,14 +118,29 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
           {/* Details Column */}
           <div className="p-6 md:p-8 flex flex-col justify-between space-y-4">
             <div>
-              <div className="flex items-center gap-2 text-xs text-amber-600 font-bold mb-1">
-                <div className="flex text-amber-400">
+              <button
+                type="button"
+                onClick={() => setActiveTab('reviews')}
+                className="flex items-center gap-2 text-xs text-amber-700 hover:text-amber-900 font-bold mb-1 cursor-pointer"
+              >
+                <div className="flex">
                   {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="w-3.5 h-3.5 fill-amber-400" />
+                    <Star
+                      key={i}
+                      className={`w-3.5 h-3.5 ${
+                        liveRating && i < Math.round(Number(liveRating))
+                          ? 'fill-amber-400 text-amber-400'
+                          : 'text-stone-300'
+                      }`}
+                    />
                   ))}
                 </div>
-                <span>{product.rating} ({product.reviewCount} Reviews)</span>
-              </div>
+                <span>
+                  {liveRating
+                    ? `${liveRating} (${liveReviewCount} ${liveReviewCount === 1 ? 'Review' : 'Reviews'})`
+                    : 'No reviews yet — Write one'}
+                </span>
+              </button>
 
               <h2 className="font-serif text-xl font-bold text-stone-900 leading-snug">
                 {product.name}
@@ -96,7 +167,7 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
             <p className="text-xs text-stone-600 leading-relaxed">{product.description}</p>
 
             {/* Nav Tabs */}
-            <div className="border-b border-stone-200 flex gap-4 text-xs font-semibold">
+            <div className="border-b border-stone-200 flex flex-wrap gap-3 text-xs font-semibold">
               <button
                 onClick={() => setActiveTab('benefits')}
                 className={`pb-2 transition-colors ${
@@ -120,6 +191,16 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
                 }`}
               >
                 How To Use
+              </button>
+              <button
+                id="quickview-reviews-tab-btn"
+                onClick={() => setActiveTab('reviews')}
+                className={`pb-2 transition-colors flex items-center gap-1 ${
+                  activeTab === 'reviews' ? 'border-b-2 border-amber-800 text-amber-900' : 'text-stone-500 hover:text-stone-800'
+                }`}
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                <span>Reviews ({liveReviewCount})</span>
               </button>
             </div>
 
@@ -145,6 +226,115 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
                 </div>
               )}
               {activeTab === 'howToUse' && <p className="leading-relaxed">{product.howToUse}</p>}
+              {activeTab === 'reviews' && (
+                <div className="space-y-4">
+                  {/* Live Product Review Form */}
+                  <form
+                    onSubmit={handleProductReviewSubmit}
+                    className="bg-stone-50 p-3.5 rounded-2xl border border-stone-200 space-y-2.5"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-stone-900 text-xs">
+                        Write a Review for this Product
+                      </span>
+                      <div className="flex items-center gap-0.5">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            type="button"
+                            onClick={() => setReviewRating(star)}
+                            className="p-0.5 cursor-pointer"
+                            title={`${star} Star`}
+                          >
+                            <Star
+                              className={`w-4 h-4 ${
+                                star <= reviewRating
+                                  ? 'fill-amber-400 text-amber-400'
+                                  : 'text-stone-300'
+                              }`}
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        required
+                        placeholder="Your Name *"
+                        value={reviewerName}
+                        onChange={(e) => setReviewerName(e.target.value)}
+                        className="px-2.5 py-1.5 bg-white border border-stone-300 rounded-lg text-xs focus:ring-1 focus:ring-amber-800 focus:outline-hidden"
+                      />
+                      <input
+                        type="text"
+                        placeholder="City (Optional)"
+                        value={reviewerCity}
+                        onChange={(e) => setReviewerCity(e.target.value)}
+                        className="px-2.5 py-1.5 bg-white border border-stone-300 rounded-lg text-xs focus:ring-1 focus:ring-amber-800 focus:outline-hidden"
+                      />
+                    </div>
+
+                    <textarea
+                      required
+                      rows={2}
+                      placeholder="Share your real experience with this product..."
+                      value={reviewComment}
+                      onChange={(e) => setReviewComment(e.target.value)}
+                      className="w-full px-2.5 py-1.5 bg-white border border-stone-300 rounded-lg text-xs focus:ring-1 focus:ring-amber-800 focus:outline-hidden"
+                    />
+
+                    {reviewFeedback && (
+                      <p className="text-[11px] font-semibold text-emerald-700 flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        {reviewFeedback}
+                      </p>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={isSubmittingReview}
+                      className="w-full py-2 bg-stone-900 text-amber-200 text-xs font-bold rounded-lg hover:bg-stone-800 flex items-center justify-center gap-1.5 disabled:opacity-50"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>{isSubmittingReview ? 'Posting Review...' : 'Post Live Review'}</span>
+                    </button>
+                  </form>
+
+                  {/* Product Reviews List */}
+                  <div className="max-h-44 overflow-y-auto space-y-2.5 pr-1">
+                    {productReviews.length === 0 ? (
+                      <p className="text-center text-stone-500 py-3 italic">
+                        No customer reviews for this product yet. Be the first to share your honest feedback!
+                      </p>
+                    ) : (
+                      productReviews.map((rev) => (
+                        <div
+                          key={rev.id}
+                          className="bg-white p-3 rounded-xl border border-stone-200 space-y-1.5"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-stone-900">{rev.customerName}</span>
+                            <span className="text-[10px] text-stone-400">{rev.date}</span>
+                          </div>
+                          <div className="flex text-amber-400">
+                            {[...Array(rev.rating)].map((_, idx) => (
+                              <Star key={idx} className="w-3 h-3 fill-amber-400 text-amber-400" />
+                            ))}
+                          </div>
+                          <p className="text-stone-700 leading-relaxed">{rev.comment}</p>
+                          {rev.adminReply && (
+                            <div className="bg-amber-50 p-2 rounded-lg border border-amber-200 text-[11px] text-amber-950">
+                              <strong>Denon Team:</strong> {rev.adminReply}
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Quantity & CTA Buttons */}

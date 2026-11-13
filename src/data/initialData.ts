@@ -217,41 +217,4 @@ Denon Brightening Rice Facial Face Wash and Denon Rice Beauty Cream combine ferm
   },
 ];
 
-export const INITIAL_REVIEWS: Review[] = [
-  {
-    id: 'rev-1',
-    productId: 'denon-rice-facewash',
-    customerName: 'Saima Khan (Lahore)',
-    rating: 5,
-    date: '2026-07-18',
-    comment: 'SubhanAllah! The Denon Rice Face Wash removed my acne marks in just 1 week. My skin looks so fair and smooth. Fast COD delivery in Lahore!',
-    verifiedPurchase: true,
-  },
-  {
-    id: 'rev-2',
-    productId: 'denon-anti-acne-cream',
-    customerName: 'Muhammad Hamza (Islamabad)',
-    rating: 5,
-    date: '2026-07-14',
-    comment: 'Best acne cream in Pakistan! My pimples dried out within 2 days. Very light cream and doesn’t make skin oily.',
-    verifiedPurchase: true,
-  },
-  {
-    id: 'rev-3',
-    productId: 'denon-hair-spray-4d',
-    customerName: 'Fatima Zafar (Karachi)',
-    rating: 5,
-    date: '2026-07-11',
-    comment: 'Zero pain and zero burning! Worked in 5 minutes on my arms. Ordering the Pink Rose edition next time.',
-    verifiedPurchase: true,
-  },
-  {
-    id: 'rev-4',
-    productId: 'denon-rice-beauty-cream',
-    customerName: 'Zainab Bibi (Rawalpindi)',
-    rating: 5,
-    date: '2026-07-08',
-    comment: 'Visited Bajur Tower Rawalpindi store and bought Rice Beauty Cream. Result is amazing! Skin feels glowing and fresh.',
-    verifiedPurchase: true,
-  }
-];
+export const INITIAL_REVIEWS: Review[] = [];
