@@ -753,17 +753,60 @@ export async function requestSkinConsultation(req: SkinConsultationRequest): Pro
 }
 
 // Call AI Chatbot endpoint
-export async function sendChatMessage(message: string, history: any[] = []): Promise<string> {
-  try {
-    const response = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, history }),
-    });
-    if (!response.ok) throw new Error('Chat API error');
-    const data = await response.json();
-    return data.reply;
-  } catch (err) {
-    return 'Welcome to DENON COSMETICS! You can contact our team directly on WhatsApp (+92 312 9206522) for instant product questions or COD orders!';
+export async function sendChatMessage(
+  message: string,
+  history: any[] = [],
+  productsList?: Product[]
+): Promise<string> {
+  const activeProducts = (productsList && productsList.length > 0 ? productsList : getStoredProducts()).map((p) => ({
+    id: p.id,
+    name: p.name,
+    category: p.category,
+    salePrice: p.salePrice,
+    retailPrice: p.retailPrice,
+    volumeOrWeight: p.volumeOrWeight,
+    stockStatus: p.stockStatus,
+    suitableSkinType: p.suitableSkinType,
+    benefits: p.benefits,
+    ingredients: p.ingredients,
+    howToUse: p.howToUse,
+    description: p.description,
+  }));
+
+  const settings = getAdminSettings();
+  const brandSettings = {
+    brandName: settings.brandName,
+    currency: settings.currency,
+    whatsappNumber: settings.whatsappNumber,
+    whatsappLink: settings.whatsappLink,
+    phoneNumber: settings.phoneNumber,
+    email: settings.email,
+    officeAddress: settings.officeAddress,
+    freeShippingThreshold: settings.freeShippingThreshold,
+    standardShippingFee: settings.standardShippingFee,
+    easypaisaEnabled: settings.easypaisaEnabled,
+    jazzcashEnabled: settings.jazzcashEnabled,
+    bankEnabled: settings.bankEnabled,
+    codEnabled: settings.codEnabled,
+  };
+
+  const aiKnowledge = getStoredAIKnowledge();
+
+  const response = await fetch('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      message,
+      history,
+      products: activeProducts,
+      aiKnowledge,
+      brandSettings,
+    }),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data?.error || 'Chat API error');
   }
+  return data.reply;
 }

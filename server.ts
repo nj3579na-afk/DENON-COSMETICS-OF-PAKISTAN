@@ -16,99 +16,60 @@ app.use(express.json({ limit: '20mb' }));
 const PORT = 3000;
 
 // Initialize Google GenAI client
-const apiKey = process.env.GEMINI_API_KEY;
-let aiClient: GoogleGenAI | null = null;
-
-if (apiKey) {
-  aiClient = new GoogleGenAI({
-    apiKey,
+function getAiClient(): GoogleGenAI | null {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) return null;
+  return new GoogleGenAI({
+    apiKey: key,
     httpOptions: {
       headers: {
         'User-Agent': 'aistudio-build',
       },
     },
   });
-} else {
-  console.warn('GEMINI_API_KEY is not set. AI features will fallback to smart template response.');
 }
 
-// System Knowledge Base for Denon Cosmetics
-const DENON_KNOWLEDGE_BASE = `
+if (!process.env.GEMINI_API_KEY) {
+  console.warn('GEMINI_API_KEY is not set. Check Settings > Secrets.');
+}
+
+// Default Brand Knowledge Base for Denon Cosmetics
+const DEFAULT_BRAND_INFO = `
 Brand Name: DENON COSMETICS
 Country: Pakistan
 Currency: Pakistani Rupees (PKR)
-WhatsApp: +92 312 9206522 (Link: https://wa.me/923129206522)
-Phone: 0300 5633597
+WhatsApp: +92 312 9206522 (https://wa.me/923129206522)
+Phone: 0300 5633597 / 0312 9206522
 Email: connectdenon@gmail.com
 Office Address: Office No. FF13, Ganj Mandi Road, Bajur Tower, Rawalpindi, Pakistan
-
-Product Lineup:
-1. DENON Brightening Rice Facial Face Wash (100ml) - PKR 499 (Retail PKR 650) - Rice Water & Niacinamide for dark spots & pigmentation.
-2. DENON Vitamin C Glow Reviving Face Wash (100ml) - PKR 499 (Retail PKR 650) - Mandarin & Vitamin B5, E for dullness exfoliation.
-3. DENON Activated Charcoal Deep Detox Face Wash (100ml) - PKR 499 (Retail PKR 650) - Detoxifies pores & oily skin.
-4. DENON Brightening + Moisturizes Lotion With Rice (250ml) - PKR 899 (Retail PKR 1200) - Face & Body lotion with rice extract.
-5. DENON Brightening Moisturizer Lotion With Aloe Vera (250ml) - PKR 899 (Retail PKR 1200) - Rapid soothing for skin redness & barrier repair.
-6. DENON Anti Acne Cream (30g) - PKR 550 (Retail PKR 750) - Tea Tree & Salicylic Acid for active pimples & acne scars.
-7. DENON Hair Removing Spray Moult Removal 4D (150ml) - PKR 850 (Retail PKR 1100) - 5-minute painless body hair removal.
-8. DENON Export Quality Beauty Soap (100g) - PKR 250 (Retail PKR 350) - Popping Pearl extract 5 Days action.
-9. DENON Export Quality Beauty Serum (45g) - PKR 950 (Retail PKR 1250) - 5 Days test result pearl glass skin serum.
-10. DENON Rice Beauty Cream (50g) - PKR 650 (Retail PKR 850) - Rice water & niacinamide anti-freckle night cream.
-11. DENON Hair Removing Spray Pink Rose (150ml) - PKR 850 (Retail PKR 1100) - Painless rose scented hair removal.
-12. DENON Hair Removing Spray Lemon Citrus (150ml) - PKR 850 (Retail PKR 1100) - Fresh lemon hair removal spray.
-13. Sansal Red Anaar Whitening Bleach Cream + Serum - PKR 180 (Retail PKR 250) - Instant Anaar glow bleach.
-14. Sansal Glitter Glow Up Cream Bleach - PKR 180 (Retail PKR 250) - Emerald diamond glitter event bleach.
-15. DENON Pearl Beauty Cream (50g) - PKR 650 (Retail PKR 850) - Classic 5-day action pearl cream.
-
 Shipping & Delivery:
-- Cash on Delivery (COD) available nationwide in Pakistan (Islamabad, Rawalpindi, Lahore, Karachi, Peshawar, Quetta, Multan, Faisalabad, etc.).
+- Cash on Delivery (COD) available nationwide across Pakistan (Islamabad, Rawalpindi, Lahore, Karachi, Peshawar, Quetta, Multan, Faisalabad, etc.).
 - FREE Shipping on orders above PKR 2,000. Flat PKR 199 shipping fee for orders below PKR 2,000.
-- Delivery time: 2 to 4 working days.
+- Delivery time: 2 to 4 working days via Trax, Leopards, and TCS.
 - 7-day hassle-free return or exchange policy.
 `;
 
 // API Route: AI Skin Consultation
 app.post('/api/skin-consultation', async (req, res) => {
   try {
-    const { age, gender, skinType, skinConcerns, additionalNotes, imageBase64 } = req.body;
+    const { age, gender, skinType, skinConcerns, additionalNotes, imageBase64, image } = req.body;
+    const aiClient = getAiClient();
 
     if (!aiClient) {
-      // Fallback structured advice
-      const recommended = INITIAL_PRODUCTS.filter((p) => {
-        if (skinConcerns.includes('Acne') && p.id.includes('acne')) return true;
-        if (skinConcerns.includes('Dark Spots') && (p.id.includes('rice') || p.id.includes('pearl'))) return true;
-        if (skinConcerns.includes('Dullness') && p.id.includes('vitaminc')) return true;
-        return false;
-      });
-
-      return res.json({
-        summary: `Personalized Skincare Profile for ${age} Year Old (${skinType} Skin)`,
-        analysis: `Based on your selection of concerns (${skinConcerns.join(', ')}), your skin requires targeted active botanicals like Niacinamide, Rice Water, and Salicylic Acid to balance sebum and restore natural radiance.`,
-        routineAdvice: {
-          morning: [
-            'Cleanse with Denon Face Wash suited for your concern',
-            'Apply Denon Beauty Serum onto damp skin',
-            'Moisturize with Denon Face & Body Lotion'
-          ],
-          evening: [
-            'Cleanse face thoroughly to remove daytime pollutants',
-            'Apply Denon Rice Beauty Cream or Pearl Cream',
-            'Leave overnight for deep cellular skin renewal'
-          ]
-        },
-        recommendedProductIds: recommended.length > 0 ? recommended.map(r => r.id) : ['denon-rice-facewash', 'denon-beauty-serum', 'denon-rice-beauty-cream'],
-        disclaimer: 'Note: This AI skin assessment is for informational and skincare selection purposes only. It does not replace medical advice from a certified dermatologist.'
-      });
+      return res.status(503).json({ error: 'Gemini API key is not configured in Settings > Secrets.' });
     }
 
     const contents: any[] = [];
+    const rawImage = imageBase64 || image;
 
     // Attach image if provided
-    if (imageBase64) {
-      // Clean base64 prefix if present
-      const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+    if (rawImage && typeof rawImage === 'string') {
+      const mimeMatch = rawImage.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,/);
+      const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+      const cleanBase64 = rawImage.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, '');
       contents.push({
         inlineData: {
-          mimeType: 'image/jpeg',
+          mimeType,
           data: cleanBase64,
         },
       });
@@ -147,14 +108,13 @@ Do not include any Markdown backticks around the JSON.
     contents.push({ text: promptText });
 
     const response = await aiClient.models.generateContent({
-      model: 'gemini-3.6-flash',
+      model: 'gemini-4-hydrogen',
       contents,
     });
 
     const responseText = response.text || '';
-    // Clean potential json formatting wrapper
     const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
-    
+
     let parsedData;
     try {
       parsedData = JSON.parse(cleanJson);
@@ -174,56 +134,133 @@ Do not include any Markdown backticks around the JSON.
     return res.json(parsedData);
   } catch (error: any) {
     console.error('Skin consultation error:', error);
-    res.status(500).json({ error: 'Failed to process skin consultation' });
+    res.status(500).json({ error: error?.message || 'Failed to process skin consultation' });
   }
 });
 
-// API Route: AI Chatbot
+// API Route: AI Chatbot (Powered by Gemini)
 app.post('/api/chat', async (req, res) => {
   try {
-    const { message, history } = req.body;
+    const { message, history, products, aiKnowledge, brandSettings } = req.body;
+    const aiClient = getAiClient();
 
     if (!aiClient) {
-      return res.json({
-        reply: `Welcome to DENON COSMETICS! I can help you with product recommendations, ingredient details, and Cash on Delivery orders across Pakistan. You can also contact us directly on WhatsApp at +92 312 9206522 or visit us at Bajur Tower, Rawalpindi!`
+      return res.status(503).json({
+        error: 'Gemini API key is not configured. Please check Settings > Secrets.',
       });
     }
 
-    const systemInstruction = `
-You are the Official AI Skincare & Customer Service Assistant for DENON COSMETICS (Pakistan).
-Use only this knowledge base to answer questions concisely, politely, and luxuriously:
-${DENON_KNOWLEDGE_BASE}
+    const activeProducts = Array.isArray(products) && products.length > 0 ? products : INITIAL_PRODUCTS;
+    const productCatalogText = activeProducts
+      .map((p: any, idx: number) => {
+        const ingredients = Array.isArray(p.ingredients) ? p.ingredients.join(', ') : '';
+        const benefits = Array.isArray(p.benefits) ? p.benefits.join(', ') : '';
+        return `${idx + 1}. ${p.name} (${p.category || 'Skincare'}${p.volumeOrWeight ? `, ${p.volumeOrWeight}` : ''}) - Sale Price: PKR ${p.salePrice} (Retail: PKR ${p.retailPrice}) | Stock: ${p.stockStatus || 'In Stock'} | Skin Type: ${p.suitableSkinType || 'All Skin Types'}${benefits ? ` | Benefits: ${benefits}` : ''}${ingredients ? ` | Key Ingredients: ${ingredients}` : ''}${p.howToUse ? ` | How to use: ${p.howToUse}` : ''}${p.description ? ` | Info: ${p.description}` : ''}`;
+      })
+      .join('\n');
 
-Key Guidelines:
-1. Always present prices in Pakistani Rupees (PKR).
-2. Highlight Cash on Delivery (COD) across Pakistan and FREE Shipping over PKR 2,000.
-3. Recommend specific Denon products for skin issues (e.g. Rice face wash for dark spots, Anti-Acne cream for pimples, Hair Removal spray for smooth skin).
-4. Keep answers helpful, accurate, friendly, and brief (2-4 sentences max unless detailed list is requested).
-5. Always offer direct WhatsApp support link (https://wa.me/923129206522 or +92 312 9206522) for instant order placement.
-6. Never make unsupported medical claims or diagnose diseases.
+    const customKnowledgeText = Array.isArray(aiKnowledge) && aiKnowledge.length > 0
+      ? aiKnowledge
+          .map((item: any) => `- ${item.topic} (${item.category}): ${item.responseText}`)
+          .join('\n')
+      : '';
+
+    const storeDetailsText = brandSettings
+      ? `
+Brand Name: ${brandSettings.brandName || 'DENON COSMETICS'}
+Country: Pakistan | Currency: ${brandSettings.currency || 'PKR'}
+WhatsApp: ${brandSettings.whatsappNumber || '+92 312 9206522'} (${brandSettings.whatsappLink || 'https://wa.me/923129206522'})
+Phone: ${brandSettings.phoneNumber || '0300 5633597'}
+Email: ${brandSettings.email || 'connectdenon@gmail.com'}
+Office Address: ${brandSettings.officeAddress || 'Office No. FF13, Ganj Mandi Road, Bajur Tower, Rawalpindi, Pakistan'}
+Shipping & Delivery:
+- Cash on Delivery (COD) available nationwide across Pakistan.
+- FREE Shipping on orders above PKR ${brandSettings.freeShippingThreshold ?? 2000}. Standard shipping fee: PKR ${brandSettings.standardShippingFee ?? 199}.
+- Delivery time: 2 to 4 working days.
+- Payment Methods: ${brandSettings.codEnabled !== false ? 'Cash on Delivery (COD)' : 'Online Prepayment'}${brandSettings.easypaisaEnabled ? ', EasyPaisa' : ''}${brandSettings.jazzcashEnabled ? ', JazzCash' : ''}${brandSettings.bankEnabled ? ', Bank Transfer' : ''}.
+- 7-day hassle-free return or exchange policy.
+`
+      : DEFAULT_BRAND_INFO;
+
+    const systemInstruction = `
+You are the smart, friendly, and knowledgeable AI Assistant for DENON COSMETICS (Pakistan), powered by Gemini.
+
+YOUR GOAL:
+Answer EVERY question a customer asks accurately, clearly, and helpfully! Never refuse a valid question or say you can only answer store questions. You have full general knowledge as well as complete store expertise:
+1. Store & Product Questions: Use the live catalog and store details below to give exact PKR prices, ingredients, skin-type suitability, usage instructions, routines, COD/shipping info, payment options, and WhatsApp order help.
+2. Skincare, Beauty & Health Questions: Give thoughtful, science-based skincare advice (e.g., acne, pigmentation, dark spots, dry/oily/sensitive skin, sun protection, routines, hair care) and naturally suggest matching DENON products where helpful.
+3. Any General Customer Questions: If a customer asks about anything else (general knowledge, greetings, lifestyle, translation, writing help, advice, or casual conversation), answer it warmly, intelligently, and completely like a top-tier AI assistant.
+
+LANGUAGE RULE:
+- Always reply in the SAME language and script the customer uses!
+  - If they write in English -> reply in English.
+  - If they write in Urdu script (اردو) -> reply in natural Urdu script.
+  - If they write in Roman Urdu (e.g., "salam bhai acne k liye kya best hai") -> reply in clear, friendly Roman Urdu.
+
+RESPONSE STYLE:
+- Be warm, polite, concise yet thorough enough to fully answer the question.
+- Use clean formatting (short paragraphs or bullet points when listing multiple items).
+- Present all product prices in Pakistani Rupees (PKR).
+- For medical emergencies or severe skin diseases, share helpful general guidance and advise consulting a qualified dermatologist.
+
+LIVE STORE DETAILS:
+${storeDetailsText}
+
+LIVE PRODUCT CATALOG:
+${productCatalogText}
+${customKnowledgeText ? `\nADDITIONAL STORE KNOWLEDGE BASE:\n${customKnowledgeText}` : ''}
 `;
 
-    const chatHistory = Array.isArray(history) ? history.map((h: any) => ({
-      role: h.sender === 'user' ? 'user' : 'model',
-      parts: [{ text: h.text }]
-    })) : [];
+    // Normalize history so it starts with 'user' and alternates cleanly
+    const rawHistory = Array.isArray(history) ? history : [];
+    const normalizedHistory: { role: 'user' | 'model'; parts: { text: string }[] }[] = [];
+
+    for (const item of rawHistory) {
+      const text = typeof item?.text === 'string' ? item.text.trim() : '';
+      if (!text) continue;
+      const role: 'user' | 'model' = item.sender === 'user' ? 'user' : 'model';
+
+      // Gemini chat history must start with a 'user' message
+      if (normalizedHistory.length === 0 && role !== 'user') continue;
+
+      // Avoid consecutive duplicate roles
+      const prev = normalizedHistory[normalizedHistory.length - 1];
+      if (prev && prev.role === role) {
+        prev.parts[0].text += `\n${text}`;
+      } else {
+        normalizedHistory.push({ role, parts: [{ text }] });
+      }
+    }
+
+    // Ensure history ends on 'model' before calling chat.sendMessage
+    if (normalizedHistory.length > 0 && normalizedHistory[normalizedHistory.length - 1].role === 'user') {
+      normalizedHistory.pop();
+    }
 
     const chat = aiClient.chats.create({
-      model: 'gemini-3.6-flash',
+      model: 'gemini-4-hydrogen',
+      history: normalizedHistory,
       config: {
         systemInstruction,
-        temperature: 0.7,
       },
     });
 
     const response = await chat.sendMessage({
-      message: message || 'Hello, tell me about Denon Cosmetics',
+      message: (typeof message === 'string' && message.trim()) ? message.trim() : 'Assalamu Alaikum! Tell me about Denon Cosmetics.',
     });
 
-    return res.json({ reply: response.text });
+    const replyText = response.text?.trim();
+    if (!replyText) {
+      throw new Error('Empty response received from Gemini.');
+    }
+
+    return res.json({ reply: replyText });
   } catch (error: any) {
     console.error('Chat error:', error);
-    res.status(500).json({ reply: 'Thank you for reaching out to Denon Cosmetics! Please message our team on WhatsApp at +92 312 9206522 for instant assistance.' });
+    const status = error?.status || 500;
+    res.status(status >= 400 && status < 600 ? status : 500).json({
+      error: error?.message || 'Unable to generate AI response right now. Please try again.',
+    });
   }
 });
 

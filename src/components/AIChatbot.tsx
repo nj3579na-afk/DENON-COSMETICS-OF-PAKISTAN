@@ -52,7 +52,7 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ products, onSelectProduct,
     setIsLoading(true);
 
     try {
-      const replyText = await sendChatMessage(text.trim(), messages);
+      const replyText = await sendChatMessage(text.trim(), messages, products);
       const botMsg: ChatMessage = {
         id: `bot-${Date.now()}`,
         sender: 'bot',
@@ -60,13 +60,14 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ products, onSelectProduct,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages((prev) => [...prev, botMsg]);
-    } catch (err) {
+    } catch (err: any) {
+      const errMsg = err?.message ? `(${err.message}) ` : '';
       setMessages((prev) => [
         ...prev,
         {
           id: `bot-err-${Date.now()}`,
           sender: 'bot',
-          text: 'Thank you for reaching out! You can also chat directly with our customer support team on WhatsApp at ' + whatsappNumber,
+          text: `Sorry, I could not get a response right now ${errMsg}Please try again or contact us on WhatsApp at ${whatsappNumber}.`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
