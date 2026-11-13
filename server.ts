@@ -56,7 +56,7 @@ app.post('/api/skin-consultation', async (req, res) => {
     const aiClient = getAiClient();
 
     if (!aiClient) {
-      return res.status(503).json({ error: 'Gemini API key is not configured in Settings > Secrets.' });
+      return res.status(500).json({ error: 'Gemini API key is not configured. Please add GEMINI_API_KEY in Settings > Secrets.' });
     }
 
     const contents: any[] = [];
@@ -145,8 +145,8 @@ app.post('/api/chat', async (req, res) => {
     const aiClient = getAiClient();
 
     if (!aiClient) {
-      return res.status(503).json({
-        error: 'Gemini API key is not configured. Please check Settings > Secrets.',
+      return res.status(500).json({
+        error: 'Gemini API key is not configured. Please add GEMINI_API_KEY in Settings > Secrets.',
       });
     }
 
@@ -257,8 +257,9 @@ ${customKnowledgeText ? `\nADDITIONAL STORE KNOWLEDGE BASE:\n${customKnowledgeTe
     return res.json({ reply: replyText });
   } catch (error: any) {
     console.error('Chat error:', error);
-    const status = error?.status || 500;
-    res.status(status >= 400 && status < 600 ? status : 500).json({
+    const rawStatus = Number(error?.status);
+    const safeStatus = rawStatus >= 400 && rawStatus < 600 && ![403, 502, 503, 504].includes(rawStatus) ? rawStatus : 500;
+    res.status(safeStatus).json({
       error: error?.message || 'Unable to generate AI response right now. Please try again.',
     });
   }
