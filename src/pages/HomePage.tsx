@@ -344,7 +344,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="bg-stone-800/60 p-6 rounded-2xl border border-stone-700/60 space-y-3">
               <div className="w-12 h-12 rounded-xl bg-amber-900/60 text-amber-300 flex items-center justify-center font-bold">
                 01
@@ -362,16 +362,6 @@ export const HomePage: React.FC<HomePageProps> = ({
               <h3 className="font-serif text-lg font-bold text-amber-200">5-Day Action Formula</h3>
               <p className="text-xs text-stone-300 leading-relaxed">
                 Our iconic Denon Pearl and Rice Beauty Creams deliver visible reduction in dark spots, freckles, and dullness within days.
-              </p>
-            </div>
-
-            <div className="bg-stone-800/60 p-6 rounded-2xl border border-stone-700/60 space-y-3">
-              <div className="w-12 h-12 rounded-xl bg-amber-900/60 text-amber-300 flex items-center justify-center font-bold">
-                03
-              </div>
-              <h3 className="font-serif text-lg font-bold text-amber-200">Convenient Nationwide COD</h3>
-              <p className="text-xs text-stone-300 leading-relaxed">
-                Order directly online or via WhatsApp (+92 312 9206522). Pay Cash on Delivery when courier arrives at your doorstep!
               </p>
             </div>
           </div>
