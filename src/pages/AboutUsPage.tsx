@@ -1,6 +1,7 @@
 import React from 'react';
-import { Award, ShieldCheck, Sparkles, MapPin, Heart, CheckCircle2 } from 'lucide-react';
+import { Award, ShieldCheck, Sparkles, MapPin, Heart, CheckCircle2, ExternalLink } from 'lucide-react';
 import { AdminSettings } from '../types';
+import { getOfficeLocations, getOfficeGoogleMapsUrl } from '../services/api';
 
 interface AboutUsPageProps {
   settings: AdminSettings;
@@ -8,6 +9,7 @@ interface AboutUsPageProps {
 }
 
 export const AboutUsPage: React.FC<AboutUsPageProps> = ({ settings, setActiveTab }) => {
+  const offices = getOfficeLocations(settings);
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-12">
       {/* Hero Header */}
@@ -69,11 +71,23 @@ export const AboutUsPage: React.FC<AboutUsPageProps> = ({ settings, setActiveTab
             Our corporate head office is located at Bajur Tower, Rawalpindi. We dispatch hundreds of Cash on Delivery parcels daily across Lahore, Karachi, Islamabad, Peshawar, Quetta, Multan, and Faisalabad.
           </p>
 
-          <div className="text-xs font-semibold text-stone-800 space-y-1">
-            <p className="flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-amber-800" />
-              <span>{settings.officeAddress}</span>
-            </p>
+          <div className="text-xs font-semibold text-stone-800 space-y-2">
+            {offices.map((office) => (
+              <div key={office.id} className="flex flex-wrap items-center gap-2">
+                <MapPin className="w-4 h-4 text-amber-800 shrink-0" />
+                <span className="font-bold text-stone-900">{office.name}:</span>
+                <span>{office.address}</span>
+                <a
+                  href={getOfficeGoogleMapsUrl(office)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-amber-800 hover:text-amber-950 font-bold underline inline-flex items-center gap-1"
+                >
+                  <span>View on Google Maps</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+            ))}
           </div>
         </div>
 

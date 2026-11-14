@@ -182,6 +182,14 @@ export interface ChatMessage {
   suggestedProducts?: string[];
 }
 
+export interface OfficeLocation {
+  id: string;
+  name: string;
+  address: string;
+  googleMapsUrl?: string;
+  phone?: string;
+}
+
 export interface AdminSettings {
   brandName?: string;
   websiteTitle?: string;
@@ -200,6 +208,7 @@ export interface AdminSettings {
   businessEmail?: string;
   officeAddress: string;
   googleMapsUrl?: string;
+  officeLocationsJson?: string;
   facebookUrl: string;
   facebookEnabled?: boolean;
   instagramUrl: string;

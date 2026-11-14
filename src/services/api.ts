@@ -1,4 +1,4 @@
-import { Product, Order, Review, AdminSettings, SkinConsultationRequest, SkinConsultationResult, CategoryType, AuditLog, Customer, CategoryItem, AIKnowledgeItem, BlogPost, SEOSettings, MediaItem } from '../types';
+import { Product, Order, Review, AdminSettings, SkinConsultationRequest, SkinConsultationResult, CategoryType, AuditLog, Customer, CategoryItem, AIKnowledgeItem, BlogPost, SEOSettings, MediaItem, OfficeLocation } from '../types';
 import { INITIAL_PRODUCTS } from '../data/products';
 import { INITIAL_ADMIN_SETTINGS, INITIAL_BLOG_POSTS, INITIAL_REVIEWS } from '../data/initialData';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
@@ -631,6 +631,50 @@ export function saveReviews(reviews: Review[]): void {
 export function getAdminSettings(): AdminSettings {
   initializeStorage();
   return cachedSettings;
+}
+
+export function getOfficeGoogleMapsUrl(office: { address?: string; googleMapsUrl?: string }): string {
+  const custom = (office.googleMapsUrl || '').trim();
+  if (custom && (custom.startsWith('http://') || custom.startsWith('https://'))) {
+    return custom;
+  }
+  const query = (office.address || '').trim();
+  return query ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}` : 'https://maps.google.com';
+}
+
+export function getOfficeLocations(settings: AdminSettings): OfficeLocation[] {
+  if (settings.officeLocationsJson) {
+    try {
+      const parsed = JSON.parse(settings.officeLocationsJson);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed
+          .filter((item) => item && (item.address || item.name))
+          .map((item, idx) => ({
+            id: String(item.id || `office-${idx + 1}`),
+            name: String(item.name || (idx === 0 ? 'Head Office' : `Branch Office ${idx + 1}`)),
+            address: String(item.address || ''),
+            googleMapsUrl: item.googleMapsUrl ? String(item.googleMapsUrl) : '',
+            phone: item.phone ? String(item.phone) : '',
+          }));
+      }
+    } catch (e) {
+      console.warn('Failed to parse officeLocationsJson:', e);
+    }
+  }
+
+  if (settings.officeAddress && settings.officeAddress.trim()) {
+    return [
+      {
+        id: 'office-primary',
+        name: 'Head Office',
+        address: settings.officeAddress.trim(),
+        googleMapsUrl: settings.googleMapsUrl || '',
+        phone: settings.phoneNumber || '',
+      },
+    ];
+  }
+
+  return [];
 }
 
 export function saveAdminSettings(settings: AdminSettings): void {

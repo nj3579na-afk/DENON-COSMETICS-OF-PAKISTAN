@@ -34,9 +34,10 @@ import {
   CreditCard,
   QrCode,
   Building2,
+  ExternalLink,
 } from 'lucide-react';
-import { AdminSettings, AdminRole, AuditLog } from '../types';
-import { saveAdminSettings, addAuditLog } from '../services/api';
+import { AdminSettings, AdminRole, AuditLog, OfficeLocation } from '../types';
+import { saveAdminSettings, addAuditLog, getOfficeLocations, getOfficeGoogleMapsUrl } from '../services/api';
 import { ImageUploader } from './ImageUploader';
 
 interface AdminSettingsModuleProps {
@@ -68,6 +69,40 @@ export const AdminSettingsModule: React.FC<AdminSettingsModuleProps> = ({
 
   // Form Local State
   const [formSettings, setFormSettings] = useState<AdminSettings>({ ...settings });
+  const [officeLocations, setOfficeLocations] = useState<OfficeLocation[]>(() => getOfficeLocations(settings));
+
+  const syncOfficeLocations = (nextOffices: OfficeLocation[]) => {
+    setOfficeLocations(nextOffices);
+    setFormSettings((prev) => ({
+      ...prev,
+      officeLocationsJson: JSON.stringify(nextOffices),
+      officeAddress: nextOffices[0]?.address ?? prev.officeAddress,
+      googleMapsUrl: nextOffices[0] ? getOfficeGoogleMapsUrl(nextOffices[0]) : prev.googleMapsUrl,
+    }));
+  };
+
+  const handleAddOffice = () => {
+    const newOffice: OfficeLocation = {
+      id: `office-${Date.now()}`,
+      name: `Branch Office ${officeLocations.length + 1}`,
+      address: '',
+      googleMapsUrl: '',
+      phone: '',
+    };
+    syncOfficeLocations([...officeLocations, newOffice]);
+  };
+
+  const handleUpdateOffice = (id: string, field: keyof OfficeLocation, value: string) => {
+    const updated = officeLocations.map((office) =>
+      office.id === id ? { ...office, [field]: value } : office
+    );
+    syncOfficeLocations(updated);
+  };
+
+  const handleRemoveOffice = (id: string) => {
+    const updated = officeLocations.filter((office) => office.id !== id);
+    syncOfficeLocations(updated);
+  };
 
   // Credential Modification Local State
   const [currentPasswordConfirm, setCurrentPasswordConfirm] = useState('');
@@ -796,26 +831,158 @@ export const AdminSettingsModule: React.FC<AdminSettingsModuleProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1">Physical Office & Factory Address</label>
+                <label className="block text-xs font-bold text-stone-700 mb-1">Primary Office Address (Quick Summary)</label>
                 <input
                   type="text"
-                  value={formSettings.officeAddress}
-                  onChange={(e) => handleTextChange('officeAddress', e.target.value)}
+                  value={officeLocations[0]?.address || formSettings.officeAddress}
+                  onChange={(e) => {
+                    if (officeLocations.length > 0) {
+                      handleUpdateOffice(officeLocations[0].id, 'address', e.target.value);
+                    } else {
+                      handleTextChange('officeAddress', e.target.value);
+                    }
+                  }}
                   className="w-full px-3.5 py-2.5 glass-input rounded-xl text-xs"
                 />
               </div>
-
-              <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1">Google Maps Location URL</label>
-                <input
-                  type="text"
-                  value={formSettings.googleMapsUrl || ''}
-                  onChange={(e) => handleTextChange('googleMapsUrl', e.target.value)}
-                  placeholder="https://maps.google.com/..."
-                  className="w-full px-3.5 py-2.5 glass-input rounded-xl text-xs font-mono"
-                />
-              </div>
             </div>
+          </div>
+
+          {/* Multiple Office & Branch Locations Manager */}
+          <div className="pt-6 border-t border-stone-200/80 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="font-serif text-base font-bold text-stone-900 flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-amber-800" />
+                  <span>Office & Branch Locations ({officeLocations.length})</span>
+                </h3>
+                <p className="text-[11px] text-stone-500">
+                  Add multiple office or branch addresses. Each address automatically gets a clickable Google Maps link on the website (or you can paste your exact Google Maps link).
+                </p>
+              </div>
+              <button
+                type="button"
+                id="add-office-address-btn"
+                onClick={handleAddOffice}
+                className="px-4 py-2 bg-amber-900 text-amber-100 text-xs font-bold rounded-xl hover:bg-stone-900 transition-colors flex items-center gap-1.5 shrink-0 shadow-xs"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add Another Office</span>
+              </button>
+            </div>
+
+            {officeLocations.length === 0 ? (
+              <div className="p-6 rounded-2xl border border-dashed border-stone-300 bg-white/50 text-center space-y-2">
+                <p className="text-xs text-stone-500">No office locations added yet.</p>
+                <button
+                  type="button"
+                  onClick={handleAddOffice}
+                  className="px-4 py-2 bg-stone-900 text-amber-200 text-xs font-bold rounded-xl"
+                >
+                  + Add First Office Address
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {officeLocations.map((office, index) => {
+                  const resolvedMapLink = getOfficeGoogleMapsUrl(office);
+                  return (
+                    <div
+                      key={office.id}
+                      className="p-4 sm:p-5 rounded-2xl bg-white/75 border border-stone-200/90 space-y-3 shadow-2xs"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-extrabold uppercase tracking-wider text-amber-900 bg-amber-100 px-2.5 py-0.5 rounded-full">
+                          Office #{index + 1}
+                        </span>
+                        <div className="flex items-center gap-3">
+                          {office.address.trim() && (
+                            <a
+                              href={resolvedMapLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[11px] font-bold text-emerald-700 hover:underline flex items-center gap-1"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              <span>Open in Google Maps</span>
+                            </a>
+                          )}
+                          {officeLocations.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveOffice(office.id)}
+                              className="text-rose-600 hover:text-rose-800 text-xs font-bold flex items-center gap-1"
+                              title="Remove Office"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Remove</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[11px] font-bold text-stone-700 mb-1">
+                            Office / Branch Name *
+                          </label>
+                          <input
+                            type="text"
+                            value={office.name}
+                            onChange={(e) => handleUpdateOffice(office.id, 'name', e.target.value)}
+                            placeholder="e.g. Rawalpindi Head Office or Lahore Branch"
+                            className="w-full px-3 py-2 glass-input rounded-xl text-xs font-semibold"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-bold text-stone-700 mb-1">
+                            Branch Phone (Optional)
+                          </label>
+                          <input
+                            type="text"
+                            value={office.phone || ''}
+                            onChange={(e) => handleUpdateOffice(office.id, 'phone', e.target.value)}
+                            placeholder="e.g. 0300 5633597"
+                            className="w-full px-3 py-2 glass-input rounded-xl text-xs font-mono"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-stone-700 mb-1">
+                          Full Office Address *
+                        </label>
+                        <input
+                          type="text"
+                          value={office.address}
+                          onChange={(e) => handleUpdateOffice(office.id, 'address', e.target.value)}
+                          placeholder="e.g. Office No. FF13, Ganj Mandi Road, Bajur Tower, Rawalpindi, Pakistan"
+                          className="w-full px-3 py-2 glass-input rounded-xl text-xs"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-stone-700 mb-1">
+                          Google Maps Direct Link (Optional — auto-generated from address if empty)
+                        </label>
+                        <input
+                          type="text"
+                          value={office.googleMapsUrl || ''}
+                          onChange={(e) => handleUpdateOffice(office.id, 'googleMapsUrl', e.target.value)}
+                          placeholder={
+                            office.address.trim()
+                              ? `Auto: https://www.google.com/maps/search/?api=1&query=...`
+                              : 'https://maps.google.com/?q=...'
+                          }
+                          className="w-full px-3 py-2 glass-input rounded-xl text-xs font-mono"
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       )}

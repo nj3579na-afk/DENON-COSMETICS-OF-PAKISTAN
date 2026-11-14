@@ -1,6 +1,7 @@
 import React from 'react';
-import { Phone, Mail, MapPin, MessageCircle, ShieldCheck, Truck, RefreshCw, Award, ArrowUp } from 'lucide-react';
+import { Phone, Mail, MapPin, MessageCircle, ShieldCheck, Truck, RefreshCw, Award, ArrowUp, ExternalLink } from 'lucide-react';
 import { AdminSettings } from '../types';
+import { getOfficeLocations, getOfficeGoogleMapsUrl } from '../services/api';
 
 interface FooterProps {
   setActiveTab: (tab: string) => void;
@@ -8,6 +9,7 @@ interface FooterProps {
 }
 
 export const Footer: React.FC<FooterProps> = ({ setActiveTab, settings }) => {
+  const offices = getOfficeLocations(settings);
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -197,12 +199,32 @@ export const Footer: React.FC<FooterProps> = ({ setActiveTab, settings }) => {
         {/* Col 4: Direct Contact Info */}
         <div className="space-y-3">
           <h4 className="font-serif text-sm font-semibold text-stone-100 uppercase tracking-wider mb-4 border-b border-amber-800/40 pb-2">
-            Head Office (Pakistan)
+            {offices.length > 1 ? 'Our Offices (Pakistan)' : 'Head Office (Pakistan)'}
           </h4>
-          <p className="flex items-start gap-2.5 text-xs text-stone-300">
-            <MapPin className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-            <span>{settings.officeAddress}</span>
-          </p>
+          <div className="space-y-2.5">
+            {offices.map((office) => (
+              <div key={office.id} className="flex items-start gap-2.5 text-xs text-stone-300">
+                <MapPin className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <div>
+                  {offices.length > 1 && (
+                    <span className="block font-bold text-amber-300 text-[11px]">{office.name}</span>
+                  )}
+                  <a
+                    href={getOfficeGoogleMapsUrl(office)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-amber-300 transition-colors inline-flex items-center gap-1 flex-wrap"
+                    title="Open in Google Maps"
+                  >
+                    <span>{office.address}</span>
+                    <span className="text-[10px] font-bold text-emerald-400 inline-flex items-center gap-0.5 underline">
+                      (Map <ExternalLink className="w-2.5 h-2.5" />)
+                    </span>
+                  </a>
+                </div>
+              </div>
+            ))}
+          </div>
           <p className="flex items-center gap-2.5 text-xs text-stone-300">
             <Phone className="w-4 h-4 text-amber-400 shrink-0" />
             <span>Phone: {settings.phoneNumber}</span>

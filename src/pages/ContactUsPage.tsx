@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { Phone, Mail, MapPin, MessageCircle, Send, CheckCircle2 } from 'lucide-react';
+import { Phone, Mail, MapPin, MessageCircle, Send, CheckCircle2, ExternalLink } from 'lucide-react';
 import { AdminSettings } from '../types';
+import { getOfficeLocations, getOfficeGoogleMapsUrl } from '../services/api';
 
 interface ContactUsPageProps {
   settings: AdminSettings;
 }
 
 export const ContactUsPage: React.FC<ContactUsPageProps> = ({ settings }) => {
+  const offices = getOfficeLocations(settings);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [message, setMessage] = useState('');
@@ -98,16 +100,42 @@ export const ContactUsPage: React.FC<ContactUsPageProps> = ({ settings }) => {
         {/* Info Cards & Socials */}
         <div className="space-y-6">
           <div className="bg-stone-900 text-stone-100 p-8 rounded-3xl border border-stone-800 space-y-6">
-            <h2 className="font-serif text-xl font-bold text-amber-200">Head Office Details</h2>
+            <h2 className="font-serif text-xl font-bold text-amber-200">
+              {offices.length > 1 ? `Office & Branch Locations (${offices.length})` : 'Head Office Details'}
+            </h2>
 
             <div className="space-y-4 text-xs">
               <div className="flex items-start gap-3">
                 <div className="p-2.5 bg-amber-900/60 text-amber-400 rounded-xl shrink-0 mt-0.5">
                   <MapPin className="w-5 h-5" />
                 </div>
-                <div>
-                  <h4 className="font-bold text-stone-200">Office Address:</h4>
-                  <p className="text-stone-300 mt-0.5">{settings.officeAddress}</p>
+                <div className="space-y-2.5 flex-1">
+                  <h4 className="font-bold text-stone-200">
+                    {offices.length > 1 ? 'Office Addresses:' : 'Office Address:'}
+                  </h4>
+                  {offices.map((office) => (
+                    <div
+                      key={office.id}
+                      className="p-2.5 rounded-xl bg-stone-800/70 border border-stone-700/70 space-y-1"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-bold text-amber-300">{office.name}</span>
+                        <a
+                          href={getOfficeGoogleMapsUrl(office)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[11px] font-bold text-emerald-400 hover:underline inline-flex items-center gap-1 shrink-0"
+                        >
+                          <span>Google Maps</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                      <p className="text-stone-300 leading-relaxed">{office.address}</p>
+                      {office.phone && (
+                        <p className="text-[11px] text-stone-400">Phone: {office.phone}</p>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
 

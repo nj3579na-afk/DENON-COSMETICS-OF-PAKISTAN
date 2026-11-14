@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { ShoppingBag, Heart, Search, Menu, X, Sparkles, Phone, MessageCircle, MapPin, User, ShieldCheck } from 'lucide-react';
+import { ShoppingBag, Heart, Search, Menu, X, Sparkles, Phone, MessageCircle, MapPin, User, ShieldCheck, ExternalLink } from 'lucide-react';
 import { AdminSettings } from '../types';
+import { getOfficeLocations, getOfficeGoogleMapsUrl } from '../services/api';
 
 interface HeaderProps {
   activeTab: string;
@@ -197,11 +198,21 @@ export const Header: React.FC<HeaderProps> = ({
             ))}
           </div>
 
-          <div className="pt-3 border-t border-stone-200 text-xs text-stone-600 space-y-1">
-            <p className="flex items-center gap-2">
-              <MapPin className="w-3.5 h-3.5 text-amber-700" />
-              <span>{settings.officeAddress}</span>
-            </p>
+          <div className="pt-3 border-t border-stone-200 text-xs text-stone-600 space-y-1.5">
+            {getOfficeLocations(settings).map((office) => (
+              <p key={office.id} className="flex items-start gap-2">
+                <MapPin className="w-3.5 h-3.5 text-amber-700 shrink-0 mt-0.5" />
+                <a
+                  href={getOfficeGoogleMapsUrl(office)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-amber-900 underline inline-flex items-center gap-1 flex-wrap"
+                >
+                  <span>{office.name ? `${office.name}: ` : ''}{office.address}</span>
+                  <ExternalLink className="w-3 h-3 text-amber-700" />
+                </a>
+              </p>
+            ))}
             <p className="flex items-center gap-2">
               <Phone className="w-3.5 h-3.5 text-amber-700" />
               <span>Phone: {settings.phoneNumber}</span>
