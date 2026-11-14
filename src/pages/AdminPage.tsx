@@ -236,21 +236,31 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   // Backup file state
   const [backupRestoreText, setBackupRestoreText] = useState('');
 
-  // Load datasets on mount
+  // Load datasets on mount & keep synced live on data updates
   useEffect(() => {
-    setOrders(getStoredOrders());
-    setReviews(getStoredReviews());
-    setAuditLogs(getStoredAuditLogs());
-    setCustomers(getStoredCustomers());
-    const loadedCats = categoriesProp && categoriesProp.length > 0 ? categoriesProp : getStoredCategories();
-    setCategories(loadedCats);
-    if (!pCategory && loadedCats.length > 0) {
-      setPCategory(loadedCats[0].name);
-    }
-    setAIKnowledge(getStoredAIKnowledge());
-    setBlogPosts(getStoredBlogPosts());
-    setSEOSettings(getStoredSEOSettings());
-    setMediaItems(getStoredMedia());
+    const loadDatasets = () => {
+      setOrders(getStoredOrders());
+      setReviews(getStoredReviews());
+      setAuditLogs(getStoredAuditLogs());
+      setCustomers(getStoredCustomers());
+      const loadedCats = categoriesProp && categoriesProp.length > 0 ? categoriesProp : getStoredCategories();
+      setCategories(loadedCats);
+      if (!pCategory && loadedCats.length > 0) {
+        setPCategory(loadedCats[0].name);
+      }
+      setAIKnowledge(getStoredAIKnowledge());
+      setBlogPosts(getStoredBlogPosts());
+      setSEOSettings(getStoredSEOSettings());
+      setMediaItems(getStoredMedia());
+    };
+
+    loadDatasets();
+    window.addEventListener('denon_data_updated', loadDatasets);
+    window.addEventListener('storage', loadDatasets);
+    return () => {
+      window.removeEventListener('denon_data_updated', loadDatasets);
+      window.removeEventListener('storage', loadDatasets);
+    };
   }, [categoriesProp]);
 
   // Handle Login Logic with Lockout & 2FA
@@ -2370,58 +2380,282 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       )}
 
       {/* ANALYTICS & CITIES TAB */}
-      {activeTab === 'analytics' && (
-        <div className="space-y-6 animate-fade-in">
-          <h2 className="font-serif text-xl font-bold text-stone-900">Nationwide Sales & City Analytics</h2>
+      {activeTab === 'analytics' && (() => {
+        const activeOrders = orders.filter((o) => o.status !== 'Cancelled');
+        const cancelledOrdersCount = orders.length - activeOrders.length;
+        const liveRevenue = activeOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+        const totalUnitsSold = activeOrders.reduce(
+          (sum, o) =>
+            sum +
+            (Array.isArray(o.items)
+              ? o.items.reduce((itemSum, item) => itemSum + (Number(item?.quantity) || 0), 0)
+              : 0),
+          0
+        );
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="glass-panel p-6 rounded-3xl border border-white/70 space-y-4">
-              <h3 className="font-bold text-stone-900 text-sm">Top Delivery Cities in Pakistan</h3>
-              <div className="space-y-3 text-xs font-semibold">
-                {[
-                  { city: 'Lahore', pct: '38%', orders: '142 Orders' },
-                  { city: 'Karachi', pct: '26%', orders: '98 Orders' },
-                  { city: 'Rawalpindi / Islamabad', pct: '22%', orders: '84 Orders' },
-                  { city: 'Faisalabad', pct: '8%', orders: '31 Orders' },
-                  { city: 'Peshawar & Others', pct: '6%', orders: '22 Orders' },
-                ].map((item, idx) => (
-                  <div key={idx} className="space-y-1">
-                    <div className="flex justify-between text-stone-800">
-                      <span>{item.city}</span>
-                      <span className="font-bold">{item.pct} ({item.orders})</span>
-                    </div>
-                    <div className="w-full h-2 rounded-full bg-stone-200 overflow-hidden">
-                      <div className="h-full bg-amber-800 rounded-full" style={{ width: item.pct }} />
-                    </div>
-                  </div>
-                ))}
+        // Live City Aggregation (case-insensitive normalization)
+        const cityMap = new Map<string, { city: string; orders: number; units: number; revenue: number }>();
+        for (const order of activeOrders) {
+          const rawCity = (order.customer?.city || 'Unspecified').trim() || 'Unspecified';
+          const cityKey = rawCity.toLowerCase();
+          const formattedCity = rawCity.charAt(0).toUpperCase() + rawCity.slice(1);
+          const orderUnits = Array.isArray(order.items)
+            ? order.items.reduce((s, it) => s + (Number(it?.quantity) || 0), 0)
+            : 0;
+          const existing = cityMap.get(cityKey);
+          if (existing) {
+            existing.orders += 1;
+            existing.units += orderUnits;
+            existing.revenue += Number(order.total) || 0;
+          } else {
+            cityMap.set(cityKey, {
+              city: formattedCity,
+              orders: 1,
+              units: orderUnits,
+              revenue: Number(order.total) || 0,
+            });
+          }
+        }
+        const liveCityStats = Array.from(cityMap.values())
+          .sort((a, b) => b.orders - a.orders || b.revenue - a.revenue)
+          .map((item) => ({
+            ...item,
+            pct: activeOrders.length > 0 ? Math.round((item.orders / activeOrders.length) * 100) : 0,
+          }));
+
+        // Live Category & Product Sales Aggregation
+        const categoryMap = new Map<string, { cat: string; units: number; revenue: number }>();
+        const productMap = new Map<
+          string,
+          { id: string; name: string; category: string; units: number; orders: number; revenue: number }
+        >();
+
+        for (const order of activeOrders) {
+          const seenProductInOrder = new Set<string>();
+          if (!Array.isArray(order.items)) continue;
+          for (const item of order.items) {
+            if (!item || !item.product) continue;
+            const qty = Number(item.quantity) || 0;
+            if (qty <= 0) continue;
+            const matchedProd = products.find((p) => p.id === item.product.id);
+            const prodName = matchedProd?.name || item.product.name || 'Product';
+            const catName = matchedProd?.category || item.product.category || 'Uncategorized';
+            const unitPrice = Number(item.product.salePrice ?? matchedProd?.salePrice ?? 0);
+            const itemRevenue = unitPrice * qty;
+
+            const existingCat = categoryMap.get(catName);
+            if (existingCat) {
+              existingCat.units += qty;
+              existingCat.revenue += itemRevenue;
+            } else {
+              categoryMap.set(catName, { cat: catName, units: qty, revenue: itemRevenue });
+            }
+
+            const existingProd = productMap.get(item.product.id);
+            const orderIncrement = seenProductInOrder.has(item.product.id) ? 0 : 1;
+            seenProductInOrder.add(item.product.id);
+            if (existingProd) {
+              existingProd.units += qty;
+              existingProd.orders += orderIncrement;
+              existingProd.revenue += itemRevenue;
+            } else {
+              productMap.set(item.product.id, {
+                id: item.product.id,
+                name: prodName,
+                category: catName,
+                units: qty,
+                orders: 1,
+                revenue: itemRevenue,
+              });
+            }
+          }
+        }
+
+        const liveCategoryStats = Array.from(categoryMap.values())
+          .sort((a, b) => b.units - a.units || b.revenue - a.revenue)
+          .map((item) => ({
+            ...item,
+            pct: totalUnitsSold > 0 ? Math.round((item.units / totalUnitsSold) * 100) : 0,
+          }));
+
+        const liveProductStats = Array.from(productMap.values())
+          .sort((a, b) => b.units - a.units || b.revenue - a.revenue)
+          .map((item) => ({
+            ...item,
+            pct: totalUnitsSold > 0 ? Math.round((item.units / totalUnitsSold) * 100) : 0,
+          }));
+
+        return (
+          <div className="space-y-6 animate-fade-in">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h2 className="font-serif text-xl font-bold text-stone-900">
+                  Live Sales, Product & City Analytics
+                </h2>
+                <p className="text-xs text-stone-500">
+                  Calculated in real time from actual customer orders ({activeOrders.length} active
+                  {cancelledOrdersCount > 0 ? `, ${cancelledOrdersCount} cancelled` : ''}).
+                </p>
+              </div>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 text-xs font-bold self-start sm:self-auto">
+                <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
+                Live Order Data
+              </span>
+            </div>
+
+            {/* Live Analytics Summary Strip */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="glass-panel p-4 rounded-2xl border border-white/70">
+                <p className="text-[11px] font-bold uppercase text-stone-500">Active Orders</p>
+                <p className="text-2xl font-extrabold text-stone-900 mt-1">{activeOrders.length}</p>
+              </div>
+              <div className="glass-panel p-4 rounded-2xl border border-white/70">
+                <p className="text-[11px] font-bold uppercase text-stone-500">Live Revenue</p>
+                <p className="text-2xl font-extrabold text-stone-900 mt-1">
+                  PKR {liveRevenue.toLocaleString()}
+                </p>
+              </div>
+              <div className="glass-panel p-4 rounded-2xl border border-white/70">
+                <p className="text-[11px] font-bold uppercase text-stone-500">Products Sold</p>
+                <p className="text-2xl font-extrabold text-stone-900 mt-1">{totalUnitsSold} Units</p>
+              </div>
+              <div className="glass-panel p-4 rounded-2xl border border-white/70">
+                <p className="text-[11px] font-bold uppercase text-stone-500">Cities Reached</p>
+                <p className="text-2xl font-extrabold text-stone-900 mt-1">{liveCityStats.length}</p>
               </div>
             </div>
 
-            <div className="glass-panel p-6 rounded-3xl border border-white/70 space-y-4">
-              <h3 className="font-bold text-stone-900 text-sm">Category Performance breakdown</h3>
-              <div className="space-y-3 text-xs font-semibold">
-                {[
-                  { cat: 'Face Wash (Rice & Charcoal)', pct: '45%' },
-                  { cat: 'Beauty Creams & Bleach', pct: '28%' },
-                  { cat: 'Hair Removal Spray 4D', pct: '17%' },
-                  { cat: 'Serums & Lotions', pct: '10%' },
-                ].map((item, idx) => (
-                  <div key={idx} className="space-y-1">
-                    <div className="flex justify-between text-stone-800">
-                      <span>{item.cat}</span>
-                      <span className="font-bold">{item.pct}</span>
-                    </div>
-                    <div className="w-full h-2 rounded-full bg-stone-200 overflow-hidden">
-                      <div className="h-full bg-stone-900 rounded-full" style={{ width: item.pct }} />
-                    </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Live Top Delivery Cities */}
+              <div className="glass-panel p-6 rounded-3xl border border-white/70 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-stone-900 text-sm">Top Delivery Cities (Live Orders)</h3>
+                  <span className="text-[11px] font-bold text-amber-900">
+                    {liveCityStats.length} {liveCityStats.length === 1 ? 'City' : 'Cities'}
+                  </span>
+                </div>
+
+                {liveCityStats.length === 0 ? (
+                  <p className="text-xs text-stone-500 py-8 text-center">
+                    No live orders yet. City performance automatically updates as soon as customers place orders.
+                  </p>
+                ) : (
+                  <div className="space-y-3 text-xs font-semibold">
+                    {liveCityStats.map((item) => (
+                      <div key={item.city} className="space-y-1">
+                        <div className="flex justify-between text-stone-800 gap-2">
+                          <span className="truncate">{item.city}</span>
+                          <span className="font-bold shrink-0">
+                            {item.pct}% ({item.orders} {item.orders === 1 ? 'Order' : 'Orders'} • PKR{' '}
+                            {item.revenue.toLocaleString()})
+                          </span>
+                        </div>
+                        <div className="w-full h-2.5 rounded-full bg-stone-200 overflow-hidden">
+                          <div
+                            className="h-full bg-amber-800 rounded-full transition-all duration-500"
+                            style={{ width: `${Math.max(4, item.pct)}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
+
+              {/* Live Category Performance Breakdown */}
+              <div className="glass-panel p-6 rounded-3xl border border-white/70 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-stone-900 text-sm">Category Performance (Live Sales)</h3>
+                  <span className="text-[11px] font-bold text-stone-600">{totalUnitsSold} Units Sold</span>
+                </div>
+
+                {liveCategoryStats.length === 0 ? (
+                  <p className="text-xs text-stone-500 py-8 text-center">
+                    No live product sales yet. Category performance automatically updates as customers order.
+                  </p>
+                ) : (
+                  <div className="space-y-3 text-xs font-semibold">
+                    {liveCategoryStats.map((item) => (
+                      <div key={item.cat} className="space-y-1">
+                        <div className="flex justify-between text-stone-800 gap-2">
+                          <span className="truncate">{item.cat}</span>
+                          <span className="font-bold shrink-0">
+                            {item.pct}% ({item.units} {item.units === 1 ? 'Unit' : 'Units'} • PKR{' '}
+                            {item.revenue.toLocaleString()})
+                          </span>
+                        </div>
+                        <div className="w-full h-2.5 rounded-full bg-stone-200 overflow-hidden">
+                          <div
+                            className="h-full bg-stone-900 rounded-full transition-all duration-500"
+                            style={{ width: `${Math.max(4, item.pct)}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Live Product Buying & Selling Performance */}
+            <div className="glass-panel p-6 rounded-3xl border border-white/70 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-stone-900 text-sm">
+                  Product Sales Performance (Live Buying & Selling)
+                </h3>
+                <span className="text-[11px] font-bold text-amber-900">
+                  {liveProductStats.length} Active Selling {liveProductStats.length === 1 ? 'Product' : 'Products'}
+                </span>
+              </div>
+
+              {liveProductStats.length === 0 ? (
+                <p className="text-xs text-stone-500 py-8 text-center">
+                  No live product sales recorded yet. Every customer order updates product sales counts and revenue here automatically.
+                </p>
+              ) : (
+                <div className="space-y-3 text-xs">
+                  {liveProductStats.map((prod) => {
+                    const catalogProd = products.find((p) => p.id === prod.id);
+                    return (
+                      <div key={prod.id} className="p-3.5 rounded-2xl bg-white/70 border border-stone-200/70 space-y-2">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                          <div>
+                            <span className="font-bold text-stone-900">{prod.name}</span>
+                            <span className="text-[11px] text-amber-800 font-semibold ml-2">
+                              ({prod.category})
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-3 font-bold text-stone-800">
+                            <span>{prod.units} Units Sold</span>
+                            <span className="text-stone-400">•</span>
+                            <span>{prod.orders} {prod.orders === 1 ? 'Order' : 'Orders'}</span>
+                            <span className="text-stone-400">•</span>
+                            <span className="text-emerald-800">PKR {prod.revenue.toLocaleString()}</span>
+                            {catalogProd && (
+                              <>
+                                <span className="text-stone-400">•</span>
+                                <span className="text-[11px] text-stone-500">
+                                  Stock: {catalogProd.stockCount}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <div className="w-full h-2 rounded-full bg-stone-200 overflow-hidden">
+                          <div
+                            className="h-full bg-emerald-700 rounded-full transition-all duration-500"
+                            style={{ width: `${Math.max(4, prod.pct)}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* SECURITY AUDIT LOGS TAB */}
       {activeTab === 'audit_logs' && (
