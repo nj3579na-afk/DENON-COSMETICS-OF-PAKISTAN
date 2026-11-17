@@ -37,7 +37,6 @@ export const INITIAL_ADMIN_SETTINGS: AdminSettings = {
   headerMenuLinksJson: JSON.stringify([
     { title: 'Shop Products', url: '#products' },
     { title: 'Categories', url: '#categories' },
-    { title: 'Skin Consultation AI', url: '#consultation' },
     { title: 'Track Order', url: '#track' },
     { title: 'Contact Us', url: '#contact' },
   ]),
@@ -74,7 +73,6 @@ export const INITIAL_ADMIN_SETTINGS: AdminSettings = {
   footerText: '© 2026 DENON COSMETICS Pakistan. Direct manufacturer of export-quality beauty creams, serums & face washes.',
   maintenanceMode: false,
   maintenanceMessage: 'Denon Cosmetics portal is currently undergoing scheduled inventory maintenance. Please check back shortly.',
-  aiConsultationEnabled: true,
   autoLogoutMinutes: 15,
   twoFactorRequired: false,
   currency: 'PKR',
@@ -139,12 +137,6 @@ export const INITIAL_FAQS: FAQItem[] = [
     question: 'What is the delivery fee for orders in Pakistan?',
     answer: 'We offer FREE Cash on Delivery for all orders above PKR 2,000! For orders under PKR 2,000, a flat shipping fee of PKR 199 applies nationwide.',
     category: 'COD & Payment',
-  },
-  {
-    id: 'faq-4',
-    question: 'How do I use the AI Skin Consultation Assistant?',
-    answer: 'Simply click "AI Skin Consultation" in the top menu, upload a clear face photo, select your age and skin concerns (e.g., dark spots, acne, dullness). Our AI assistant analyzes your skin profile and recommends suitable Denon products.',
-    category: 'Products & Skincare',
   },
   {
     id: 'faq-5',

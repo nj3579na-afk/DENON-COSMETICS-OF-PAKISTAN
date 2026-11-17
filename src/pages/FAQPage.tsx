@@ -27,7 +27,7 @@ export const FAQPage: React.FC<FAQPageProps> = ({ settings }) => {
           Got Questions? We Have Answers.
         </h1>
         <p className="text-xs text-stone-600 max-w-lg mx-auto">
-          Everything you need to know about Denon Cosmetics, Cash on Delivery in Pakistan, ingredient safety, and AI skin consultation.
+          Everything you need to know about Denon Cosmetics, Cash on Delivery in Pakistan, and ingredient safety.
         </p>
       </div>
 

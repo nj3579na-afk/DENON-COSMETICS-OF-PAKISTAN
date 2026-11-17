@@ -1,4 +1,4 @@
-import { Product, Order, Review, AdminSettings, SkinConsultationRequest, SkinConsultationResult, CategoryType, AuditLog, Customer, CategoryItem, AIKnowledgeItem, BlogPost, SEOSettings, MediaItem, OfficeLocation } from '../types';
+import { Product, Order, Review, AdminSettings, CategoryType, AuditLog, Customer, CategoryItem, BlogPost, SEOSettings, MediaItem, OfficeLocation } from '../types';
 import { INITIAL_PRODUCTS } from '../data/products';
 import { INITIAL_ADMIN_SETTINGS, INITIAL_BLOG_POSTS, INITIAL_REVIEWS } from '../data/initialData';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
@@ -17,12 +17,6 @@ const INITIAL_CUSTOMERS: Customer[] = [];
 const INITIAL_AUDIT_LOGS: AuditLog[] = [
   { id: 'log-1', timestamp: new Date(Date.now() - 3600000 * 2).toISOString(), adminUser: 'Super Admin (denon_admin)', action: 'Logged into Admin Portal', category: 'Security', ipAddress: '182.185.120.45', details: 'Successful login' },
   { id: 'log-2', timestamp: new Date(Date.now() - 3600000 * 5).toISOString(), adminUser: 'Super Admin (denon_admin)', action: 'Updated Settings', category: 'Settings', ipAddress: '182.185.120.45', details: 'Standard shipping rate updated' },
-];
-
-const INITIAL_AI_KNOWLEDGE: AIKnowledgeItem[] = [
-  { id: 'ai-1', topic: 'Rice Water Science', queryKey: 'rice water benefits', responseText: 'Denon Rice Water Face Wash contains fermented rice amino acids and Niacinamide that fade hyperpigmentation, shrink open pores, and boost radiant skin glow.', category: 'Ingredients', lastUpdated: '2026-07-20' },
-  { id: 'ai-2', topic: 'Cash on Delivery Policy', queryKey: 'cod delivery pakistan', responseText: 'We offer nationwide Cash on Delivery (COD) across Pakistan. Delivery takes 2-4 working days via Trax, Leopards, and TCS.', category: 'Shipping', lastUpdated: '2026-07-15' },
-  { id: 'ai-3', topic: 'Hair Spray Usage', queryKey: 'hair spray directions', responseText: 'Spray Denon 4D Hair Removal Spray evenly on dry skin, leave for 5 to 7 minutes, and wipe off with a damp cloth in reverse hair direction.', category: 'Products', lastUpdated: '2026-07-18' },
 ];
 
 const INITIAL_SEO: SEOSettings = {
@@ -54,7 +48,6 @@ const stripDemoReviews = (list: Review[]): Review[] =>
 let cachedReviews: Review[] = [];
 let cachedCustomers: Customer[] = INITIAL_CUSTOMERS;
 let cachedAuditLogs: AuditLog[] = INITIAL_AUDIT_LOGS;
-let cachedAIKnowledge: AIKnowledgeItem[] = INITIAL_AI_KNOWLEDGE;
 let cachedBlogPosts: BlogPost[] = INITIAL_BLOG_POSTS;
 let cachedSEO: SEOSettings = INITIAL_SEO;
 let cachedMedia: MediaItem[] = INITIAL_MEDIA;
@@ -274,7 +267,6 @@ export async function syncAllFromSupabase(): Promise<void> {
       reviewsRes,
       customersRes,
       auditLogsRes,
-      aiKnowledgeRes,
       blogsRes,
       seoRes,
       mediaRes,
@@ -286,7 +278,6 @@ export async function syncAllFromSupabase(): Promise<void> {
       fetchFromSupabase<Review[]>('reviews', 'reviews'),
       fetchFromSupabase<Customer[]>('customers', 'customers'),
       fetchFromSupabase<AuditLog[]>('audit_logs', 'audit_logs'),
-      fetchFromSupabase<AIKnowledgeItem[]>('ai_knowledge', 'ai_knowledge'),
       fetchFromSupabase<BlogPost[]>('blog_posts', 'blog_posts'),
       fetchFromSupabase<SEOSettings>('seo_settings', 'seo'),
       fetchFromSupabase<MediaItem[]>('media_items', 'media'),
@@ -344,11 +335,6 @@ export async function syncAllFromSupabase(): Promise<void> {
     if (auditLogsRes.success && auditLogsRes.data) {
       cachedAuditLogs = auditLogsRes.data;
       saveToLocalStorage('denon_audit_logs', cachedAuditLogs);
-      updated = true;
-    }
-    if (aiKnowledgeRes.success && aiKnowledgeRes.data) {
-      cachedAIKnowledge = aiKnowledgeRes.data;
-      saveToLocalStorage('denon_ai_knowledge', cachedAIKnowledge);
       updated = true;
     }
     if (blogsRes.success && blogsRes.data) {
@@ -425,9 +411,6 @@ export function initializeStorage() {
 
       const log = localStorage.getItem('denon_audit_logs');
       if (log) cachedAuditLogs = JSON.parse(log);
-
-      const ai = localStorage.getItem('denon_ai_knowledge');
-      if (ai) cachedAIKnowledge = JSON.parse(ai);
 
       const b = localStorage.getItem('denon_blog_posts');
       if (b) cachedBlogPosts = JSON.parse(b);
@@ -774,19 +757,6 @@ export async function saveCategories(categories: CategoryItem[]): Promise<Catego
   }
 }
 
-// AI Knowledge
-export function getStoredAIKnowledge(): AIKnowledgeItem[] {
-  initializeStorage();
-  return cachedAIKnowledge;
-}
-
-export function saveAIKnowledge(items: AIKnowledgeItem[]): void {
-  cachedAIKnowledge = items;
-  saveToLocalStorage('denon_ai_knowledge', items);
-  notifyDataUpdated();
-  saveToSupabase('ai_knowledge', 'ai_knowledge', items);
-}
-
 // Blog Posts
 export function getStoredBlogPosts(): BlogPost[] {
   initializeStorage();
@@ -839,7 +809,6 @@ export function exportDatabaseBackup(): string {
     auditLogs: getStoredAuditLogs(),
     customers: getStoredCustomers(),
     categories: getStoredCategories(),
-    aiKnowledge: getStoredAIKnowledge(),
     blogs: getStoredBlogPosts(),
     seo: getStoredSEOSettings(),
     media: getStoredMedia(),
@@ -857,7 +826,6 @@ export function restoreDatabaseBackup(jsonData: string): boolean {
     if (data.auditLogs) { cachedAuditLogs = data.auditLogs; saveToSupabase('audit_logs', 'audit_logs', data.auditLogs); }
     if (data.customers) saveCustomers(data.customers);
     if (data.categories) saveCategories(data.categories);
-    if (data.aiKnowledge) saveAIKnowledge(data.aiKnowledge);
     if (data.blogs) saveBlogPosts(data.blogs);
     if (data.seo) saveSEOSettings(data.seo);
     if (data.media) saveMedia(data.media);
@@ -867,103 +835,4 @@ export function restoreDatabaseBackup(jsonData: string): boolean {
     console.error('Failed to restore backup:', err);
     return false;
   }
-}
-
-// Call AI Skin Consultation endpoint
-export async function requestSkinConsultation(
-  req: SkinConsultationRequest,
-  productsList?: Product[]
-): Promise<SkinConsultationResult> {
-  const activeProducts = (productsList && productsList.length > 0 ? productsList : getStoredProducts()).map((p) => ({
-    id: p.id,
-    name: p.name,
-    brand: p.brand,
-    category: p.category,
-    salePrice: p.salePrice,
-    retailPrice: p.retailPrice,
-    volumeOrWeight: p.volumeOrWeight,
-    stockStatus: p.stockStatus,
-    suitableSkinType: p.suitableSkinType,
-    description: p.description,
-    benefits: p.benefits,
-    ingredients: p.ingredients,
-    howToUse: p.howToUse,
-  }));
-
-  const aiKnowledge = getStoredAIKnowledge();
-
-  const response = await fetch('/api/skin-consultation', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      ...req,
-      products: activeProducts,
-      aiKnowledge,
-    }),
-  });
-
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(data?.error || 'Skin consultation request failed. Please try again.');
-  }
-  return data;
-}
-
-// Call AI Chatbot endpoint
-export async function sendChatMessage(
-  message: string,
-  history: any[] = [],
-  productsList?: Product[]
-): Promise<string> {
-  const activeProducts = (productsList && productsList.length > 0 ? productsList : getStoredProducts()).map((p) => ({
-    id: p.id,
-    name: p.name,
-    category: p.category,
-    salePrice: p.salePrice,
-    retailPrice: p.retailPrice,
-    volumeOrWeight: p.volumeOrWeight,
-    stockStatus: p.stockStatus,
-    suitableSkinType: p.suitableSkinType,
-    benefits: p.benefits,
-    ingredients: p.ingredients,
-    howToUse: p.howToUse,
-    description: p.description,
-  }));
-
-  const settings = getAdminSettings();
-  const brandSettings = {
-    brandName: settings.brandName,
-    currency: settings.currency,
-    whatsappNumber: settings.whatsappNumber,
-    whatsappLink: settings.whatsappLink,
-    phoneNumber: settings.phoneNumber,
-    email: settings.email,
-    officeAddress: settings.officeAddress,
-    freeShippingThreshold: settings.freeShippingThreshold,
-    standardShippingFee: settings.standardShippingFee,
-    easypaisaEnabled: settings.easypaisaEnabled,
-    jazzcashEnabled: settings.jazzcashEnabled,
-    bankEnabled: settings.bankEnabled,
-    codEnabled: settings.codEnabled,
-  };
-
-  const aiKnowledge = getStoredAIKnowledge();
-
-  const response = await fetch('/api/chat', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      message,
-      history,
-      products: activeProducts,
-      aiKnowledge,
-      brandSettings,
-    }),
-  });
-
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(data?.error || 'Chat API error');
-  }
-  return data.reply;
 }

@@ -5,12 +5,10 @@ import { ProductCard } from './components/ProductCard';
 import { CartDrawer } from './components/CartDrawer';
 import { QuickViewModal } from './components/QuickViewModal';
 import { FloatingWhatsApp } from './components/FloatingWhatsApp';
-import { AIChatbot } from './components/AIChatbot';
 
 import { HomePage } from './pages/HomePage';
 import { ShopPage } from './pages/ShopPage';
 import { CategoriesPage } from './pages/CategoriesPage';
-import { AISkinConsultationPage } from './pages/AISkinConsultationPage';
 import { CheckoutPage } from './pages/CheckoutPage';
 import { TrackOrderPage } from './pages/TrackOrderPage';
 import { CustomerAccountPage } from './pages/CustomerAccountPage';
@@ -254,18 +252,6 @@ export function App() {
           />
         )}
 
-        {activeTab === 'ai-skin' && (
-          <AISkinConsultationPage
-            products={productsWithLiveReviews}
-            onAddToCart={handleAddToCart}
-            onBuyNow={handleBuyNow}
-            onQuickView={handleOpenQuickView}
-            wishlistIds={wishlistIds}
-            onToggleWishlist={handleToggleWishlist}
-            whatsappNumber={settings.whatsappNumber}
-          />
-        )}
-
         {activeTab === 'checkout' && (
           <CheckoutPage
             cartItems={cartItems}
@@ -346,15 +332,6 @@ export function App() {
 
       {/* Floating WhatsApp Button */}
       <FloatingWhatsApp whatsappNumber={settings.whatsappNumber} whatsappLink={settings.whatsappLink} />
-
-      {/* AI Skincare Chatbot Assistant */}
-      <AIChatbot
-        products={productsWithLiveReviews}
-        onSelectProduct={(p) => {
-          handleOpenQuickView(p);
-        }}
-        whatsappNumber={settings.whatsappNumber}
-      />
 
       {/* Search Modal Overlay */}
       {isSearchOpen && (

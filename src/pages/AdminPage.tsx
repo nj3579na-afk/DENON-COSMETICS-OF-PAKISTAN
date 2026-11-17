@@ -58,7 +58,6 @@ import {
   AuditLog,
   Customer,
   CategoryItem,
-  AIKnowledgeItem,
   BlogPost,
   SEOSettings,
   MediaItem,
@@ -79,8 +78,6 @@ import {
   saveCustomers,
   getStoredCategories,
   saveCategories,
-  getStoredAIKnowledge,
-  saveAIKnowledge,
   getStoredBlogPosts,
   saveBlogPosts,
   getStoredSEOSettings,
@@ -128,7 +125,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     | 'content'
     | 'blogs'
     | 'reviews'
-    | 'ai_knowledge'
     | 'seo'
     | 'media'
     | 'analytics'
@@ -143,7 +139,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [categories, setCategories] = useState<CategoryItem[]>([]);
-  const [aiKnowledge, setAIKnowledge] = useState<AIKnowledgeItem[]>([]);
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
   const [seoSettings, setSEOSettings] = useState<SEOSettings>(getStoredSEOSettings());
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
@@ -155,7 +150,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [selectedCustomerForHistory, setSelectedCustomerForHistory] = useState<Customer | null>(null);
   const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
   const [showAddBlogModal, setShowAddBlogModal] = useState(false);
-  const [showAddAIModal, setShowAddAIModal] = useState(false);
   const [showAddMediaModal, setShowAddMediaModal] = useState(false);
 
   // Search & Filter States
@@ -219,12 +213,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [blogStatusFilter, setBlogStatusFilter] = useState('All');
   const [showBlogPreviewTab, setShowBlogPreviewTab] = useState(false);
 
-  // AI Knowledge Form State
-  const [aiTopic, setAITopic] = useState('');
-  const [aiQueryKey, setAIQueryKey] = useState('');
-  const [aiResponse, setAIResponse] = useState('');
-  const [aiCat, setAICat] = useState<'Products' | 'Ingredients' | 'Shipping' | 'Policies' | 'SkinCare'>('Products');
-
   // Media Form State
   const [mediaName, setMediaName] = useState('');
   const [mediaUrl, setMediaUrl] = useState('');
@@ -248,7 +236,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       if (!pCategory && loadedCats.length > 0) {
         setPCategory(loadedCats[0].name);
       }
-      setAIKnowledge(getStoredAIKnowledge());
       setBlogPosts(getStoredBlogPosts());
       setSEOSettings(getStoredSEOSettings());
       setMediaItems(getStoredMedia());
@@ -832,23 +819,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     setAuditLogs(newLogs);
   };
 
-  // Add AI Knowledge Item
-  const handleAddAIKnowledge = (e: React.FormEvent) => {
-    e.preventDefault();
-    const newAI: AIKnowledgeItem = {
-      id: `ai-${Date.now()}`,
-      topic: aiTopic,
-      queryKey: aiQueryKey,
-      responseText: aiResponse,
-      category: aiCat,
-      lastUpdated: new Date().toISOString().split('T')[0],
-    };
-    const updated = [newAI, ...aiKnowledge];
-    setAIKnowledge(updated);
-    saveAIKnowledge(updated);
-    setShowAddAIModal(false);
-  };
-
   // Add Media Item
   const handleAddMedia = (e: React.FormEvent) => {
     e.preventDefault();
@@ -939,7 +909,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               Denon Super Admin Portal
             </h1>
             <p className="text-xs text-stone-600 mt-1 max-w-md mx-auto">
-              Secure administrative access for Denon Cosmetics Pakistan. Manage products, orders, AI knowledge & business operations.
+              Secure administrative access for Denon Cosmetics Pakistan. Manage products, orders, reviews & business operations.
             </p>
           </div>
 
@@ -1174,18 +1144,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           </button>
 
           <button
-            onClick={() => setActiveTab('ai_knowledge')}
-            className={`px-4 py-2.5 rounded-xl transition-all flex items-center gap-1.5 ${
-              activeTab === 'ai_knowledge'
-                ? 'bg-stone-900 text-amber-300 shadow-md font-extrabold'
-                : 'text-stone-700 hover:bg-white/60'
-            }`}
-          >
-            <Sparkles className="w-4 h-4 text-amber-400" />
-            <span>AI Knowledge Base</span>
-          </button>
-
-          <button
             onClick={() => setActiveTab('seo')}
             className={`px-4 py-2.5 rounded-xl transition-all flex items-center gap-1.5 ${
               activeTab === 'seo'
@@ -1338,15 +1296,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 <Download className="w-5 h-5 text-emerald-700 group-hover:text-amber-300" />
                 <p className="font-bold text-xs text-stone-900 group-hover:text-amber-300">Export Orders CSV</p>
                 <p className="text-[10px] text-stone-500 group-hover:text-stone-300">Download COD shipment sheet</p>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('ai_knowledge')}
-                className="p-4 rounded-2xl bg-white/80 border border-stone-200/80 hover:bg-stone-900 hover:text-amber-300 transition-all text-left space-y-2 group shadow-2xs"
-              >
-                <Sparkles className="w-5 h-5 text-amber-600 group-hover:text-amber-300" />
-                <p className="font-bold text-xs text-stone-900 group-hover:text-amber-300">Sync AI Knowledge</p>
-                <p className="text-[10px] text-stone-500 group-hover:text-stone-300">Train AI Bot on new products</p>
               </button>
 
               <button
@@ -2249,44 +2198,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         </div>
       )}
 
-      {/* AI KNOWLEDGE BASE TAB */}
-      {activeTab === 'ai_knowledge' && (
-        <div className="space-y-6 animate-fade-in">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="font-serif text-xl font-bold text-stone-900">AI Chatbot Knowledge Base</h2>
-              <p className="text-xs text-stone-500">
-                Train the AI Assistant on ingredients, COD policies, and brand facts.
-              </p>
-            </div>
-            <button
-              onClick={() => setShowAddAIModal(true)}
-              className="px-4 py-2 bg-stone-900 text-amber-200 text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-md"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add Knowledge Fact</span>
-            </button>
-          </div>
-
-          <div className="space-y-4">
-            {aiKnowledge.map((item) => (
-              <div key={item.id} className="glass-panel p-5 rounded-2xl border border-white/70 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-stone-900 text-xs">{item.topic}</span>
-                  <span className="text-[10px] bg-amber-100 text-amber-900 px-2 py-0.5 rounded font-bold">
-                    {item.category}
-                  </span>
-                </div>
-                <p className="text-xs font-mono text-stone-500">Query Key: "{item.queryKey}"</p>
-                <p className="text-xs text-stone-700 bg-white/60 p-3 rounded-xl border border-stone-200/60">
-                  {item.responseText}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* SEO MANAGEMENT TAB */}
       {activeTab === 'seo' && (
         <div className="glass-panel p-8 rounded-3xl border border-white/70 max-w-3xl space-y-6 animate-fade-in">
@@ -2702,7 +2613,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
           <div className="space-y-4 text-xs text-stone-700">
             <p className="font-semibold">
-              Export a complete snapshot of all products, orders, categories, customer records, and AI knowledge in JSON format.
+              Export a complete snapshot of all products, orders, categories, and customer records in JSON format.
             </p>
 
             <button
@@ -3513,64 +3424,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 Yes, Delete Article
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* CREATE AI KNOWLEDGE MODAL */}
-      {showAddAIModal && (
-        <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-md border border-stone-200 shadow-2xl space-y-4">
-            <h2 className="font-serif text-lg font-bold text-stone-900">Add AI Knowledge Fact</h2>
-            <form onSubmit={handleAddAIKnowledge} className="space-y-3 text-xs font-semibold">
-              <div>
-                <label className="block text-stone-700 mb-1">Topic Title</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Rice Water Science"
-                  value={aiTopic}
-                  onChange={(e) => setAITopic(e.target.value)}
-                  className="w-full p-2.5 border rounded-xl"
-                />
-              </div>
-
-              <div>
-                <label className="block text-stone-700 mb-1">Trigger Query Keyword</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. rice water benefits"
-                  value={aiQueryKey}
-                  onChange={(e) => setAIQueryKey(e.target.value)}
-                  className="w-full p-2.5 border rounded-xl"
-                />
-              </div>
-
-              <div>
-                <label className="block text-stone-700 mb-1">AI Response Text</label>
-                <textarea
-                  rows={3}
-                  required
-                  value={aiResponse}
-                  onChange={(e) => setAIResponse(e.target.value)}
-                  className="w-full p-2.5 border rounded-xl"
-                />
-              </div>
-
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAddAIModal(false)}
-                  className="w-full py-2 bg-stone-100 font-bold rounded-xl"
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="w-full py-2 bg-stone-900 text-amber-200 font-bold rounded-xl">
-                  Add Fact
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       )}

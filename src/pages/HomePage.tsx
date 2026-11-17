@@ -151,15 +151,6 @@ export const HomePage: React.FC<HomePageProps> = ({
                 <span>Shop All Products</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
-
-              <button
-                id="hero-ai-consult-btn"
-                onClick={() => setActiveTab('ai-skin')}
-                className="px-6 py-3.5 bg-stone-800/90 hover:bg-stone-800 text-amber-300 border border-amber-500/30 font-bold text-xs uppercase tracking-wider rounded-xl transition-all backdrop-blur-md flex items-center gap-2"
-              >
-                <Sparkles className="w-4 h-4 text-amber-400" />
-                <span>AI Skin Consultation</span>
-              </button>
             </div>
 
             {/* Quick Guarantees */}
@@ -175,31 +166,6 @@ export const HomePage: React.FC<HomePageProps> = ({
               </span>
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* AI Consultation Promo Strip */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-gradient-to-r from-amber-900 via-stone-900 to-amber-950 text-amber-100 p-8 rounded-3xl border border-amber-600/30 shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="space-y-2 text-center md:text-left">
-            <span className="inline-block text-[11px] font-bold uppercase tracking-widest text-amber-400 bg-amber-950/80 px-3 py-1 rounded-full border border-amber-500/30">
-              ✨ Free AI Skincare Feature
-            </span>
-            <h2 className="font-serif text-2xl sm:text-3xl font-bold text-stone-100">
-              Not Sure What Your Skin Needs?
-            </h2>
-            <p className="text-xs sm:text-sm text-stone-300 max-w-xl">
-              Upload your face photo or select your skin concerns. Our AI Dermatology Assistant will analyze your skin profile and build a personalized Denon routine!
-            </p>
-          </div>
-          <button
-            id="promo-ai-consult-btn"
-            onClick={() => setActiveTab('ai-skin')}
-            className="px-6 py-3.5 bg-amber-400 text-stone-950 hover:bg-amber-300 font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all shadow-md shrink-0 flex items-center gap-2"
-          >
-            <span>Analyze My Skin Now</span>
-            <ChevronRight className="w-4 h-4" />
-          </button>
         </div>
       </section>
 

@@ -83,15 +83,6 @@ export interface CategoryItem {
   sortOrder: number;
 }
 
-export interface AIKnowledgeItem {
-  id: string;
-  topic: string;
-  queryKey: string;
-  responseText: string;
-  category: 'Products' | 'Ingredients' | 'Shipping' | 'Policies' | 'SkinCare';
-  lastUpdated: string;
-}
-
 export interface SEOSettings {
   metaTitle: string;
   metaDescription: string;
@@ -152,34 +143,6 @@ export interface UserProfile {
   city: string;
   province: string;
   wishlist: string[]; // product IDs
-}
-
-export interface SkinConsultationRequest {
-  image?: string; // base64
-  age: string;
-  gender?: string;
-  skinType: 'Oily' | 'Dry' | 'Combination' | 'Normal' | 'Sensitive';
-  skinConcerns: string[]; // e.g. ['Acne', 'Dark Spots', 'Pigmentation', 'Dullness', 'Dryness']
-  additionalNotes?: string;
-}
-
-export interface SkinConsultationResult {
-  summary: string;
-  analysis: string;
-  routineAdvice: {
-    morning: string[];
-    evening: string[];
-  };
-  recommendedProductIds: string[];
-  disclaimer: string;
-}
-
-export interface ChatMessage {
-  id: string;
-  sender: 'user' | 'bot';
-  text: string;
-  timestamp: string;
-  suggestedProducts?: string[];
 }
 
 export interface OfficeLocation {
@@ -250,7 +213,6 @@ export interface AdminSettings {
   footerText?: string;
   maintenanceMode?: boolean;
   maintenanceMessage?: string;
-  aiConsultationEnabled?: boolean;
   autoLogoutMinutes?: number;
   twoFactorRequired?: boolean;
   currency?: string;

@@ -140,11 +140,6 @@ export const Footer: React.FC<FooterProps> = ({ setActiveTab, settings }) => {
               </button>
             </li>
             <li>
-              <button onClick={() => setActiveTab('ai-skin')} className="hover:text-amber-300 text-amber-400 font-medium transition-colors">
-                ✨ AI Skin Consultation
-              </button>
-            </li>
-            <li>
               <button onClick={() => setActiveTab('track-order')} className="hover:text-amber-300 transition-colors">
                 Track Your Order
               </button>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShoppingBag, Heart, Search, Menu, X, Sparkles, Phone, MessageCircle, MapPin, User, ShieldCheck, ExternalLink } from 'lucide-react';
+import { ShoppingBag, Heart, Search, Menu, X, Phone, MessageCircle, MapPin, User, ShieldCheck, ExternalLink } from 'lucide-react';
 import { AdminSettings } from '../types';
 import { getOfficeLocations, getOfficeGoogleMapsUrl } from '../services/api';
 
@@ -24,11 +24,10 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const navItems = [
+  const navItems: { id: string; label: string; admin?: boolean }[] = [
     { id: 'home', label: 'Home' },
     { id: 'shop', label: 'Shop All' },
     { id: 'categories', label: 'Categories' },
-    { id: 'ai-skin', label: '✨ AI Skin Consultation', highlight: true },
     { id: 'track-order', label: 'Track Order' },
     { id: 'about', label: 'About Us' },
     { id: 'contact', label: 'Contact Us' },
@@ -111,14 +110,10 @@ export const Header: React.FC<HeaderProps> = ({
                   activeTab === item.id
                     ? 'text-amber-800 font-semibold'
                     : 'text-stone-700 hover:text-amber-800'
-                } ${
-                  item.highlight
-                    ? 'px-3 py-1.5 rounded-full bg-amber-50 text-amber-900 border border-amber-200/80 hover:bg-amber-100 shadow-2xs font-semibold'
-                    : ''
                 } ${item.admin ? 'text-xs text-stone-500 hover:text-stone-900' : ''}`}
               >
                 {item.label}
-                {activeTab === item.id && !item.highlight && (
+                {activeTab === item.id && (
                   <span className="absolute bottom-0 left-0 w-full h-0.5 bg-amber-700 rounded-full" />
                 )}
               </button>
@@ -191,7 +186,7 @@ export const Header: React.FC<HeaderProps> = ({
                   activeTab === item.id
                     ? 'bg-amber-100/80 text-amber-900 font-bold backdrop-blur-xs'
                     : 'text-stone-700 hover:bg-white/60'
-                } ${item.highlight ? 'bg-amber-200/60 text-amber-950 font-semibold border border-amber-300/50' : ''}`}
+                }`}
               >
                 {item.label}
               </button>
