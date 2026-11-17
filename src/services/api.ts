@@ -870,28 +870,43 @@ export function restoreDatabaseBackup(jsonData: string): boolean {
 }
 
 // Call AI Skin Consultation endpoint
-export async function requestSkinConsultation(req: SkinConsultationRequest): Promise<SkinConsultationResult> {
-  try {
-    const response = await fetch('/api/skin-consultation', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(req),
-    });
-    if (!response.ok) throw new Error('Skin consultation request failed');
-    return await response.json();
-  } catch (err) {
-    console.error('API consultation error fallback:', err);
-    return {
-      summary: `Targeted Skincare Routine for ${req.skinType} Skin`,
-      analysis: `Your skin selection (${req.skinConcerns.join(', ')}) shows a need for active brightening and oil balance. Ingredients like Rice Water, Niacinamide, and Salicylic Acid are optimal.`,
-      routineAdvice: {
-        morning: ['Wash with Denon Face Wash', 'Apply Denon Serum', 'Moisturize with Denon Lotion'],
-        evening: ['Cleanse face', 'Apply Denon Rice Beauty Cream', 'Leave overnight'],
-      },
-      recommendedProductIds: ['denon-rice-facewash', 'denon-beauty-serum', 'denon-rice-beauty-cream'],
-      disclaimer: 'Note: AI recommendations are informational and do not replace professional medical advice.',
-    };
+export async function requestSkinConsultation(
+  req: SkinConsultationRequest,
+  productsList?: Product[]
+): Promise<SkinConsultationResult> {
+  const activeProducts = (productsList && productsList.length > 0 ? productsList : getStoredProducts()).map((p) => ({
+    id: p.id,
+    name: p.name,
+    brand: p.brand,
+    category: p.category,
+    salePrice: p.salePrice,
+    retailPrice: p.retailPrice,
+    volumeOrWeight: p.volumeOrWeight,
+    stockStatus: p.stockStatus,
+    suitableSkinType: p.suitableSkinType,
+    description: p.description,
+    benefits: p.benefits,
+    ingredients: p.ingredients,
+    howToUse: p.howToUse,
+  }));
+
+  const aiKnowledge = getStoredAIKnowledge();
+
+  const response = await fetch('/api/skin-consultation', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      ...req,
+      products: activeProducts,
+      aiKnowledge,
+    }),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data?.error || 'Skin consultation request failed. Please try again.');
   }
+  return data;
 }
 
 // Call AI Chatbot endpoint

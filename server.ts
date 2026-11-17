@@ -1,7 +1,7 @@
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, Type } from '@google/genai';
 import dotenv from 'dotenv';
 import { INITIAL_PRODUCTS } from './src/data/products.js';
 
@@ -52,57 +52,107 @@ Shipping & Delivery:
 // API Route: AI Skin Consultation
 app.post('/api/skin-consultation', async (req, res) => {
   try {
-    const { age, gender, skinType, skinConcerns, additionalNotes, imageBase64, image } = req.body;
-    const aiClient = getAiClient();
+    const {
+      age,
+      gender,
+      skinType,
+      skinConcerns,
+      additionalNotes,
+      imageBase64,
+      image,
+      products,
+      aiKnowledge,
+    } = req.body;
 
+    const aiClient = getAiClient();
     if (!aiClient) {
-      return res.status(500).json({ error: 'Gemini API key is not configured. Please add GEMINI_API_KEY in Settings > Secrets.' });
+      return res.status(500).json({
+        error: 'Gemini API key is not configured. Please add GEMINI_API_KEY in Settings > Secrets.',
+      });
     }
+
+    const activeProducts: any[] =
+      Array.isArray(products) && products.length > 0 ? products : INITIAL_PRODUCTS;
+
+    const inStockProducts = activeProducts.filter((p) => p?.stockStatus !== 'Out of Stock');
+    const catalogForConsultation = inStockProducts.length > 0 ? inStockProducts : activeProducts;
+
+    const validProductIds = new Set(catalogForConsultation.map((p) => String(p.id)));
+
+    const formattedCatalog = catalogForConsultation
+      .map((p: any, idx: number) => {
+        const ingredients = Array.isArray(p.ingredients) ? p.ingredients.join(', ') : '';
+        const benefits = Array.isArray(p.benefits) ? p.benefits.join('; ') : '';
+        return [
+          `[${idx + 1}] ID: "${p.id}"`,
+          `Name: ${p.name}`,
+          `Category: ${p.category || 'Skincare'}`,
+          `Price: PKR ${p.salePrice ?? 0}${p.volumeOrWeight ? ` (${p.volumeOrWeight})` : ''}`,
+          `Suitable Skin Type: ${p.suitableSkinType || 'All Skin Types'}`,
+          p.description ? `Description: ${p.description}` : '',
+          ingredients ? `Key Ingredients: ${ingredients}` : '',
+          benefits ? `Key Benefits: ${benefits}` : '',
+          p.howToUse ? `How To Use: ${p.howToUse}` : '',
+        ]
+          .filter(Boolean)
+          .join(' | ');
+      })
+      .join('\n');
+
+    const customKnowledgeText =
+      Array.isArray(aiKnowledge) && aiKnowledge.length > 0
+        ? aiKnowledge
+            .map((item: any) => `- ${item.topic} (${item.category}): ${item.responseText}`)
+            .join('\n')
+        : '';
 
     const contents: any[] = [];
     const rawImage = imageBase64 || image;
 
-    // Attach image if provided
+    // Attach facial photo if provided for multimodal visual skin assessment
     if (rawImage && typeof rawImage === 'string') {
       const mimeMatch = rawImage.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,/);
       const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
       const cleanBase64 = rawImage.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, '');
-      contents.push({
-        inlineData: {
-          mimeType,
-          data: cleanBase64,
-        },
-      });
+      if (cleanBase64) {
+        contents.push({
+          inlineData: {
+            mimeType,
+            data: cleanBase64,
+          },
+        });
+      }
     }
 
+    const systemInstruction = `
+You are a senior Cosmetic Dermatologist and Skin Formulation Specialist for DENON COSMETICS (Pakistan).
+
+YOUR CORE RESPONSIBILITY:
+Analyze EVERY individual customer's unique profile (their uploaded facial photo if provided, age, gender, skin type, selected skin concerns, and personal notes) and create a truly personalized, doctor-like skin assessment and AM/PM routine using ONLY the real products currently listed in the LIVE WEBSITE PRODUCT CATALOG below.
+
+STRICT RULES:
+1. NEVER give a generic or repeated template reply. Each customer must receive a tailored consultation directly addressing their specific age, gender, skin type, concerns, photo observations (tone, shine/sebum, dryness, dark spots, blemishes, texture, fine lines if an image is attached), and notes.
+2. Deeply synthesize each catalog product's Description, Key Ingredients, Key Benefits, Suitable Skin Type, and How To Use. In your analysis, summarize how the active ingredients in the recommended DENON products biologically help this specific customer's skin condition.
+3. ONLY recommend products from the provided LIVE WEBSITE PRODUCT CATALOG. NEVER invent products or suggest any external/third-party brand.
+4. Select 2 to 5 exact product IDs in "recommendedProductIds" that genuinely match this customer's full profile (cleansing, treatment/cream/serum, moisturizing/protection, or hair/body care if requested). Do NOT default to the same fixed items for every user.
+5. In "routineAdvice.morning" and "routineAdvice.evening", write clear step-by-step instructions naming the exact DENON products selected and summarizing how to apply them from their "How To Use" & "Description".
+6. Every ID in "recommendedProductIds" MUST match one of the exact "ID" strings in the LIVE WEBSITE PRODUCT CATALOG.
+`;
+
     const promptText = `
-You are Denon Cosmetics AI Dermatology Consultation Expert in Pakistan.
-Analyze the user's skin profile:
+CUSTOMER SKIN CONSULTATION PROFILE:
 - Age: ${age || 'Not specified'}
 - Gender: ${gender || 'Not specified'}
-- Self-Reported Skin Type: ${skinType}
-- Skin Concerns: ${Array.isArray(skinConcerns) ? skinConcerns.join(', ') : skinConcerns}
-- Additional Notes: ${additionalNotes || 'None'}
+- Skin Type: ${skinType || 'Not specified'}
+- Primary Skin Concerns: ${Array.isArray(skinConcerns) && skinConcerns.length > 0 ? skinConcerns.join(', ') : 'General skincare & glow'}
+- Customer Additional Notes: ${additionalNotes?.trim() || 'None provided'}
+- Facial Photo Attached: ${rawImage ? 'Yes — analyze visible skin characteristics in the attached photo along with the profile above.' : 'No photo uploaded — evaluate thoroughly based on age, gender, skin type, concerns, and notes.'}
 
-Target Denon Products available in catalog:
-${JSON.stringify(INITIAL_PRODUCTS.map(p => ({ id: p.id, name: p.name, category: p.category, benefits: p.benefits })))}
+LIVE WEBSITE PRODUCT CATALOG (USE ONLY THESE PRODUCTS):
+${formattedCatalog}
+${customKnowledgeText ? `\nSTORE SKINCARE KNOWLEDGE BASE:\n${customKnowledgeText}` : ''}
 
-Instructions:
-1. Provide a warm, professional, encouraging skin evaluation.
-2. Recommend a Morning and Evening skincare routine.
-3. Select 2 to 4 exact Denon product IDs from the provided list that directly address these concerns.
-4. Format the response as a JSON object matching this key structure:
-{
-  "summary": "Short title summary",
-  "analysis": "Detailed breakdown of skin condition and how ingredients help",
-  "routineAdvice": {
-    "morning": ["step 1", "step 2", "step 3"],
-    "evening": ["step 1", "step 2", "step 3"]
-  },
-  "recommendedProductIds": ["id1", "id2"],
-  "disclaimer": "Note: This AI consultation is for informational guidance only and does not substitute professional medical advice."
-}
-Do not include any Markdown backticks around the JSON.
+Generate a tailored dermatologist-grade JSON consultation report for this customer using the exact matching product IDs from the catalog above.
 `;
 
     contents.push({ text: promptText });
@@ -110,31 +160,89 @@ Do not include any Markdown backticks around the JSON.
     const response = await aiClient.models.generateContent({
       model: 'gemini-4-hydrogen',
       contents,
+      config: {
+        systemInstruction,
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            summary: {
+              type: Type.STRING,
+              description: 'Short personalized consultation title tailored to this customer age, skin type, and main concern.',
+            },
+            analysis: {
+              type: Type.STRING,
+              description: 'Detailed dermatologist-style evaluation of the customer profile (and photo if provided), explaining how the summarized descriptions, active ingredients, and benefits of the selected catalog products address their specific concerns.',
+            },
+            routineAdvice: {
+              type: Type.OBJECT,
+              properties: {
+                morning: {
+                  type: Type.ARRAY,
+                  items: { type: Type.STRING },
+                  description: 'Step-by-step AM skincare routine using the matched store products with exact application guidance.',
+                },
+                evening: {
+                  type: Type.ARRAY,
+                  items: { type: Type.STRING },
+                  description: 'Step-by-step PM skincare routine using the matched store products with exact application guidance.',
+                },
+              },
+              required: ['morning', 'evening'],
+            },
+            recommendedProductIds: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING },
+              description: 'Array of 2 to 5 exact product ID strings from the LIVE WEBSITE PRODUCT CATALOG tailored to this customer.',
+            },
+            disclaimer: {
+              type: Type.STRING,
+              description: 'Brief medical/cosmetic consultation disclaimer.',
+            },
+          },
+          required: ['summary', 'analysis', 'routineAdvice', 'recommendedProductIds', 'disclaimer'],
+        },
+      },
     });
 
-    const responseText = response.text || '';
-    const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
-
-    let parsedData;
-    try {
-      parsedData = JSON.parse(cleanJson);
-    } catch (e) {
-      parsedData = {
-        summary: `Custom Skin Evaluation for ${skinType} Skin`,
-        analysis: responseText,
-        routineAdvice: {
-          morning: ['Cleanse thoroughly', 'Apply Denon Serum', 'Protect skin with lotion'],
-          evening: ['Cleanse', 'Apply Denon Rice Cream overnight']
-        },
-        recommendedProductIds: ['denon-rice-facewash', 'denon-beauty-serum', 'denon-rice-beauty-cream'],
-        disclaimer: 'Informational skincare consultation only. Consult a doctor for medical skin disorders.'
-      };
+    const responseText = (response.text ?? '').trim();
+    if (!responseText) {
+      throw new Error('Empty consultation response received from Gemini.');
     }
 
-    return res.json(parsedData);
+    const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+    const parsedData = JSON.parse(cleanJson);
+
+    const filteredIds = Array.isArray(parsedData?.recommendedProductIds)
+      ? Array.from(
+          new Set(
+            parsedData.recommendedProductIds
+              .map((id: any) => String(id).trim())
+              .filter((id: string) => validProductIds.has(id))
+          )
+        )
+      : [];
+
+    return res.json({
+      summary: parsedData.summary || `Personalized Skincare Consultation (${skinType})`,
+      analysis: parsedData.analysis,
+      routineAdvice: {
+        morning: Array.isArray(parsedData?.routineAdvice?.morning) ? parsedData.routineAdvice.morning : [],
+        evening: Array.isArray(parsedData?.routineAdvice?.evening) ? parsedData.routineAdvice.evening : [],
+      },
+      recommendedProductIds: filteredIds,
+      disclaimer:
+        parsedData.disclaimer ||
+        'Note: This AI dermatology consultation is for skincare guidance only and does not replace a licensed medical diagnosis.',
+    });
   } catch (error: any) {
     console.error('Skin consultation error:', error);
-    res.status(500).json({ error: error?.message || 'Failed to process skin consultation' });
+    const rawStatus = Number(error?.status);
+    const safeStatus =
+      rawStatus >= 400 && rawStatus < 600 && ![403, 502, 503, 504].includes(rawStatus) ? rawStatus : 500;
+    res.status(safeStatus).json({
+      error: error?.message || 'Failed to generate AI skin consultation. Please try again.',
+    });
   }
 });
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, Upload, RefreshCw, CheckCircle2, ShieldCheck, ShoppingBag, ArrowRight, Camera, HelpCircle } from 'lucide-react';
+import { Sparkles, RefreshCw, CheckCircle2, ShoppingBag, Camera, AlertCircle } from 'lucide-react';
 import { Product, SkinConsultationRequest, SkinConsultationResult } from '../types';
 import { requestSkinConsultation } from '../services/api';
 import { ProductCard } from '../components/ProductCard';
@@ -31,6 +31,7 @@ export const AISkinConsultationPage: React.FC<AISkinConsultationPageProps> = ({
   const [imageBase64, setImageBase64] = useState<string | null>(null);
 
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [result, setResult] = useState<SkinConsultationResult | null>(null);
 
   const availableConcerns = [
@@ -66,26 +67,35 @@ export const AISkinConsultationPage: React.FC<AISkinConsultationPageProps> = ({
   const handleConsultSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setErrorMsg(null);
 
     try {
-      const res = await requestSkinConsultation({
-        age,
-        gender,
-        skinType,
-        skinConcerns: selectedConcerns,
-        additionalNotes,
-        image: imageBase64 || undefined,
-      });
+      const res = await requestSkinConsultation(
+        {
+          age,
+          gender,
+          skinType,
+          skinConcerns: selectedConcerns,
+          additionalNotes,
+          image: imageBase64 || undefined,
+        },
+        products
+      );
       setResult(res);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      setErrorMsg(
+        err?.message || 'Unable to generate AI skin consultation right now. Please try again.'
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
   const recommendedProducts = result
-    ? products.filter((p) => result.recommendedProductIds.includes(p.id))
+    ? result.recommendedProductIds
+        .map((id) => products.find((p) => p.id === id))
+        .filter((p): p is Product => Boolean(p))
     : [];
 
   const handleAddAllToCart = () => {
@@ -104,7 +114,7 @@ export const AISkinConsultationPage: React.FC<AISkinConsultationPageProps> = ({
           AI Skincare & Facial Analysis
         </h1>
         <p className="text-xs sm:text-sm text-stone-300 leading-relaxed max-w-2xl mx-auto">
-          Upload a clear photo of your face or select your skin parameters below. Our server-side Gemini AI evaluates your skin health and matches you with exact Denon Rice Water, Vitamin C, or Anti-Acne products!
+          Upload a clear photo of your face or select your skin parameters below. Our server-side Gemini AI dermatologist evaluates your skin profile and recommends a custom AM/PM routine matched strictly from our live store catalog.
         </p>
       </div>
 
@@ -249,6 +259,13 @@ export const AISkinConsultationPage: React.FC<AISkinConsultationPageProps> = ({
             />
           </div>
 
+          {errorMsg && (
+            <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-start gap-2.5 text-xs text-rose-800 font-semibold">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
           {/* Submit CTA */}
           <button
             id="submit-ai-skin-consult"
@@ -335,42 +352,44 @@ export const AISkinConsultationPage: React.FC<AISkinConsultationPageProps> = ({
           </div>
 
           {/* Recommended Denon Products */}
-          <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-200 pb-4">
-              <div>
-                <span className="text-xs font-bold uppercase tracking-widest text-amber-800">
-                  RECOMMENDED FOR YOUR SKIN PROFILE
-                </span>
-                <h2 className="font-serif text-2xl font-bold text-stone-900 mt-1">
-                  Matched Denon Products
-                </h2>
+          {recommendedProducts.length > 0 && (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-200 pb-4">
+                <div>
+                  <span className="text-xs font-bold uppercase tracking-widest text-amber-800">
+                    RECOMMENDED FOR YOUR SKIN PROFILE
+                  </span>
+                  <h2 className="font-serif text-2xl font-bold text-stone-900 mt-1">
+                    Matched Store Products
+                  </h2>
+                </div>
+
+                <button
+                  id="add-all-recommended-btn"
+                  onClick={handleAddAllToCart}
+                  className="px-5 py-3 bg-stone-900 text-amber-200 hover:bg-stone-800 font-bold text-xs rounded-xl flex items-center gap-2 shadow-md shrink-0"
+                >
+                  <ShoppingBag className="w-4 h-4 text-amber-300" />
+                  <span>Add All Recommended Products to Bag</span>
+                </button>
               </div>
 
-              <button
-                id="add-all-recommended-btn"
-                onClick={handleAddAllToCart}
-                className="px-5 py-3 bg-stone-900 text-amber-200 hover:bg-stone-800 font-bold text-xs rounded-xl flex items-center gap-2 shadow-md shrink-0"
-              >
-                <ShoppingBag className="w-4 h-4 text-amber-300" />
-                <span>Add All Recommended Products to Bag</span>
-              </button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {recommendedProducts.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    onAddToCart={onAddToCart}
+                    onBuyNow={onBuyNow}
+                    onQuickView={onQuickView}
+                    isWishlisted={wishlistIds.includes(product.id)}
+                    onToggleWishlist={onToggleWishlist}
+                    whatsappNumber={whatsappNumber}
+                  />
+                ))}
+              </div>
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {recommendedProducts.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  onAddToCart={onAddToCart}
-                  onBuyNow={onBuyNow}
-                  onQuickView={onQuickView}
-                  isWishlisted={wishlistIds.includes(product.id)}
-                  onToggleWishlist={onToggleWishlist}
-                  whatsappNumber={whatsappNumber}
-                />
-              ))}
-            </div>
-          </div>
+          )}
         </div>
       )}
     </div>
