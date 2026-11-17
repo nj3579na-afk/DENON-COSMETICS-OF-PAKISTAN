@@ -116,13 +116,14 @@ export const HomePage: React.FC<HomePageProps> = ({
         <div className="absolute inset-0 z-0 opacity-30 bg-[radial-gradient(#d97706_1px,transparent_1px)] [background-size:16px_16px]" />
         
         {/* Background Image Accent */}
-        <div className="absolute right-0 top-0 bottom-0 w-full lg:w-1/2 opacity-30 lg:opacity-75 overflow-hidden">
+        <div className="absolute right-0 top-0 bottom-0 w-full lg:w-3/5 opacity-25 lg:opacity-45 overflow-hidden">
           <img
-            src="https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?auto=format&fit=crop&q=80&w=1200"
-            alt="Denon Cosmetics Skincare"
-            className="w-full h-full object-cover object-center scale-105"
+            src="/assets/aistudio/file_00000000ee1c82078dbe50efdb247c23_bd748c5f.png"
+            alt="Denon Cosmetics Products"
+            className="w-full h-full object-cover object-center"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-stone-900 via-stone-900/80 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-stone-900 via-stone-900/80 to-stone-900/35" />
+          <div className="absolute inset-0 bg-stone-900/25" />
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 py-16">
