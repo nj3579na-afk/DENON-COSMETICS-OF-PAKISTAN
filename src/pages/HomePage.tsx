@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowRight, Sparkles, ShieldCheck, Award, Heart, ShoppingBag, Star, Truck, CheckCircle2, ChevronRight, Send, MessageSquare } from 'lucide-react';
+import { ArrowRight, Sparkles, ShieldCheck, Award, Heart, ShoppingBag, Star, Truck, CheckCircle2, ChevronRight, ChevronDown, ChevronUp, Send, MessageSquare } from 'lucide-react';
 import { Product, AdminSettings, CategoryType, CategoryItem, Review } from '../types';
 import { getStoredCategories, submitCustomerReview } from '../services/api';
 import { ProductCard } from '../components/ProductCard';
@@ -51,6 +51,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   const [reviewComment, setReviewComment] = useState('');
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [reviewSuccess, setReviewSuccess] = useState('');
+  const [showAllReviews, setShowAllReviews] = useState(false);
 
   const liveReviews = reviews.filter((r) => r.status !== 'Rejected');
   const filteredLiveReviews = liveReviews.filter((r) => {
@@ -370,169 +371,202 @@ export const HomePage: React.FC<HomePageProps> = ({
 
       {/* Live Customer Reviews Section */}
       <section id="customer-reviews" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-stone-200 pb-5">
-          <div className="space-y-1">
-            <span className="text-xs font-bold uppercase tracking-widest text-amber-800">
-              LIVE CUSTOMER REVIEWS
-            </span>
-            <h2 className="font-serif text-2xl sm:text-3xl font-bold text-stone-900">
-              Real Customer Feedback & Brand Reviews
-            </h2>
-            <p className="text-xs text-stone-600">
-              {liveReviews.length > 0
-                ? `${avgLiveRating} / 5.0 average rating across ${liveReviews.length} live customer ${liveReviews.length === 1 ? 'review' : 'reviews'}`
-                : 'Share your real experience with our brand, delivery service, or any product.'}
-            </p>
+        <div className="text-center max-w-2xl mx-auto space-y-2 border-b border-stone-200 pb-5">
+          <span className="text-xs font-bold uppercase tracking-widest text-amber-800">
+            LIVE CUSTOMER REVIEWS
+          </span>
+          <h2 className="font-serif text-2xl sm:text-3xl font-bold text-stone-900">
+            Real Customer Feedback & Brand Reviews
+          </h2>
+          <p className="text-xs text-stone-600">
+            {liveReviews.length > 0
+              ? `${avgLiveRating} / 5.0 average rating across ${liveReviews.length} live customer ${liveReviews.length === 1 ? 'review' : 'reviews'}`
+              : 'Share your real experience with our brand, delivery service, or any product.'}
+          </p>
+        </div>
+
+        {/* Write a Live Review Form */}
+        <form
+          onSubmit={handleWebsiteReviewSubmit}
+          className="max-w-2xl mx-auto bg-white p-6 sm:p-7 rounded-2xl border border-stone-200 shadow-sm space-y-4"
+        >
+          <div className="flex items-center gap-2 border-b border-stone-100 pb-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-900 flex items-center justify-center">
+              <MessageSquare className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="font-serif text-base font-bold text-stone-900">Write a Live Review</h3>
+              <p className="text-[11px] text-stone-500">Share feedback about our brand, service, or any product</p>
+            </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setReviewFilter('all')}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-colors ${
-                reviewFilter === 'all'
-                  ? 'bg-stone-900 text-amber-200'
-                  : 'bg-white border border-stone-200 text-stone-700 hover:bg-stone-100'
-              }`}
+          <div className="space-y-1">
+            <label className="block text-xs font-bold text-stone-700">Review About *</label>
+            <select
+              value={reviewTarget}
+              onChange={(e) => setReviewTarget(e.target.value)}
+              className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs font-semibold text-stone-800 focus:ring-1 focus:ring-amber-800 focus:outline-hidden"
             >
-              All ({liveReviews.length})
-            </button>
+              <option value="brand-general">{settings.brandName || 'DENON COSMETICS'} — Brand & Quality</option>
+              <option value="service-delivery">Delivery, Packaging & Customer Service</option>
+              {products.map((p) => (
+                <option key={p.id} value={p.id}>
+                  Product: {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="block text-xs font-bold text-stone-700">Your Name *</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. Ayesha Khan"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs focus:ring-1 focus:ring-amber-800 focus:outline-hidden"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="block text-xs font-bold text-stone-700">City (Optional)</label>
+              <input
+                type="text"
+                placeholder="e.g. Lahore"
+                value={customerCity}
+                onChange={(e) => setCustomerCity(e.target.value)}
+                className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs focus:ring-1 focus:ring-amber-800 focus:outline-hidden"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="block text-xs font-bold text-stone-700">Your Rating *</label>
+            <div className="flex items-center gap-1.5">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  type="button"
+                  onClick={() => setReviewRating(star)}
+                  className="p-1 rounded-lg hover:bg-amber-50 transition-colors cursor-pointer"
+                  title={`${star} Star`}
+                >
+                  <Star
+                    className={`w-5 h-5 ${
+                      star <= reviewRating ? 'fill-amber-400 text-amber-400' : 'text-stone-300'
+                    }`}
+                  />
+                </button>
+              ))}
+              <span className="text-xs font-bold text-stone-600 ml-2">{reviewRating} / 5</span>
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="block text-xs font-bold text-stone-700">Your Review *</label>
+            <textarea
+              required
+              rows={3}
+              placeholder="Share your honest experience with our brand, quality, or delivery..."
+              value={reviewComment}
+              onChange={(e) => setReviewComment(e.target.value)}
+              className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs focus:ring-1 focus:ring-amber-800 focus:outline-hidden"
+            />
+          </div>
+
+          {reviewSuccess && (
+            <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-semibold text-emerald-800 flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>{reviewSuccess}</span>
+            </div>
+          )}
+
+          <button
+            id="submit-website-review-btn"
+            type="submit"
+            disabled={isSubmittingReview}
+            className="w-full py-3 bg-stone-900 text-amber-200 text-xs font-bold rounded-xl hover:bg-stone-800 transition-colors flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
+          >
+            <Send className="w-3.5 h-3.5" />
+            <span>{isSubmittingReview ? 'Submitting Review...' : 'Submit Live Review'}</span>
+          </button>
+        </form>
+
+        {/* See Reviews Toggle Section (Below Review Form) */}
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-white p-5 sm:p-6 rounded-2xl border border-stone-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5 text-center sm:text-left">
+              <div className="w-11 h-11 rounded-xl bg-amber-100 text-amber-900 flex items-center justify-center shrink-0">
+                <Star className="w-5 h-5 fill-amber-500 text-amber-500" />
+              </div>
+              <div>
+                <h3 className="font-serif text-base sm:text-lg font-bold text-stone-900">
+                  Customer Reviews ({liveReviews.length})
+                </h3>
+                <p className="text-xs text-stone-500">
+                  {liveReviews.length > 0
+                    ? `Average Rating ${avgLiveRating} / 5.0 • Click "See Reviews" to read all brand & product feedback`
+                    : 'Click "See Reviews" to view customer feedback as it is posted'}
+                </p>
+              </div>
+            </div>
+
             <button
+              id="see-reviews-toggle-btn"
               type="button"
-              onClick={() => setReviewFilter('brand')}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-colors ${
-                reviewFilter === 'brand'
-                  ? 'bg-stone-900 text-amber-200'
-                  : 'bg-white border border-stone-200 text-stone-700 hover:bg-stone-100'
-              }`}
+              onClick={() => setShowAllReviews((prev) => !prev)}
+              className="px-6 py-3 bg-stone-900 hover:bg-stone-800 text-amber-200 text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-sm flex items-center gap-2 shrink-0 cursor-pointer"
             >
-              Brand & Service
-            </button>
-            <button
-              type="button"
-              onClick={() => setReviewFilter('product')}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-colors ${
-                reviewFilter === 'product'
-                  ? 'bg-stone-900 text-amber-200'
-                  : 'bg-white border border-stone-200 text-stone-700 hover:bg-stone-100'
-              }`}
-            >
-              Product Reviews
+              <span>{showAllReviews ? 'Hide Reviews' : `See Reviews (${liveReviews.length})`}</span>
+              {showAllReviews ? (
+                <ChevronUp className="w-4 h-4" />
+              ) : (
+                <ChevronDown className="w-4 h-4" />
+              )}
             </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-          {/* Write a Live Review Form */}
-          <form
-            onSubmit={handleWebsiteReviewSubmit}
-            className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm space-y-4"
-          >
-            <div className="flex items-center gap-2 border-b border-stone-100 pb-3">
-              <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-900 flex items-center justify-center">
-                <MessageSquare className="w-4 h-4" />
-              </div>
-              <div>
-                <h3 className="font-serif text-base font-bold text-stone-900">Write a Live Review</h3>
-                <p className="text-[11px] text-stone-500">Appears live for all shoppers</p>
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <label className="block text-xs font-bold text-stone-700">Review About *</label>
-              <select
-                value={reviewTarget}
-                onChange={(e) => setReviewTarget(e.target.value)}
-                className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs font-semibold text-stone-800 focus:ring-1 focus:ring-amber-800 focus:outline-hidden"
+        {/* Expanded Live Customer Reviews (Only Shown After Clicking "See Reviews") */}
+        {showAllReviews && (
+          <div className="max-w-6xl mx-auto space-y-6 animate-fade-in">
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => setReviewFilter('all')}
+                className={`px-4 py-1.5 rounded-full text-xs font-bold transition-colors ${
+                  reviewFilter === 'all'
+                    ? 'bg-stone-900 text-amber-200'
+                    : 'bg-white border border-stone-200 text-stone-700 hover:bg-stone-100'
+                }`}
               >
-                <option value="brand-general">{settings.brandName || 'DENON COSMETICS'} — Brand & Quality</option>
-                <option value="service-delivery">Delivery, Packaging & Customer Service</option>
-                {products.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    Product: {p.name}
-                  </option>
-                ))}
-              </select>
+                All ({liveReviews.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setReviewFilter('brand')}
+                className={`px-4 py-1.5 rounded-full text-xs font-bold transition-colors ${
+                  reviewFilter === 'brand'
+                    ? 'bg-stone-900 text-amber-200'
+                    : 'bg-white border border-stone-200 text-stone-700 hover:bg-stone-100'
+                }`}
+              >
+                Brand & Service
+              </button>
+              <button
+                type="button"
+                onClick={() => setReviewFilter('product')}
+                className={`px-4 py-1.5 rounded-full text-xs font-bold transition-colors ${
+                  reviewFilter === 'product'
+                    ? 'bg-stone-900 text-amber-200'
+                    : 'bg-white border border-stone-200 text-stone-700 hover:bg-stone-100'
+                }`}
+              >
+                Product Reviews
+              </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="block text-xs font-bold text-stone-700">Your Name *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Ayesha Khan"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs focus:ring-1 focus:ring-amber-800 focus:outline-hidden"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="block text-xs font-bold text-stone-700">City (Optional)</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Lahore"
-                  value={customerCity}
-                  onChange={(e) => setCustomerCity(e.target.value)}
-                  className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs focus:ring-1 focus:ring-amber-800 focus:outline-hidden"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <label className="block text-xs font-bold text-stone-700">Your Rating *</label>
-              <div className="flex items-center gap-1.5">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <button
-                    key={star}
-                    type="button"
-                    onClick={() => setReviewRating(star)}
-                    className="p-1 rounded-lg hover:bg-amber-50 transition-colors cursor-pointer"
-                    title={`${star} Star`}
-                  >
-                    <Star
-                      className={`w-5 h-5 ${
-                        star <= reviewRating ? 'fill-amber-400 text-amber-400' : 'text-stone-300'
-                      }`}
-                    />
-                  </button>
-                ))}
-                <span className="text-xs font-bold text-stone-600 ml-2">{reviewRating} / 5</span>
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <label className="block text-xs font-bold text-stone-700">Your Review *</label>
-              <textarea
-                required
-                rows={3}
-                placeholder="Share your honest experience with our brand, quality, or delivery..."
-                value={reviewComment}
-                onChange={(e) => setReviewComment(e.target.value)}
-                className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs focus:ring-1 focus:ring-amber-800 focus:outline-hidden"
-              />
-            </div>
-
-            {reviewSuccess && (
-              <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-semibold text-emerald-800 flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>{reviewSuccess}</span>
-              </div>
-            )}
-
-            <button
-              id="submit-website-review-btn"
-              type="submit"
-              disabled={isSubmittingReview}
-              className="w-full py-3 bg-stone-900 text-amber-200 text-xs font-bold rounded-xl hover:bg-stone-800 transition-colors flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
-            >
-              <Send className="w-3.5 h-3.5" />
-              <span>{isSubmittingReview ? 'Submitting Review...' : 'Submit Live Review'}</span>
-            </button>
-          </form>
-
-          {/* Live Customer Reviews Feed */}
-          <div className="lg:col-span-2">
             {filteredLiveReviews.length === 0 ? (
               <div className="bg-white p-10 rounded-2xl border border-dashed border-stone-300 text-center space-y-2">
                 <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-800 flex items-center justify-center mx-auto">
@@ -540,11 +574,11 @@ export const HomePage: React.FC<HomePageProps> = ({
                 </div>
                 <h3 className="font-serif text-lg font-bold text-stone-900">No Customer Reviews Yet</h3>
                 <p className="text-xs text-stone-500 max-w-md mx-auto">
-                  Be the first real customer to leave a live review about {settings.brandName || 'DENON COSMETICS'} or any of our skincare products using the form.
+                  Be the first real customer to leave a live review about {settings.brandName || 'DENON COSMETICS'} or any of our skincare products using the form above.
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                 {filteredLiveReviews.map((review) => {
                   const matchedProduct = products.find((p) => p.id === review.productId);
                   const subjectLabel =
@@ -600,7 +634,7 @@ export const HomePage: React.FC<HomePageProps> = ({
               </div>
             )}
           </div>
-        </div>
+        )}
       </section>
     </div>
   );
