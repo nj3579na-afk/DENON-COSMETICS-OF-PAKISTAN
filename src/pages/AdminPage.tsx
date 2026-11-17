@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AdminSettingsModule } from '../components/AdminSettingsModule';
+import { AdminStoreLocatorModule } from '../components/AdminStoreLocatorModule';
 import { ImageUploader } from '../components/ImageUploader';
 import {
   Lock,
@@ -47,7 +48,8 @@ import {
   ToggleLeft,
   ToggleRight,
   User,
-  Calendar
+  Calendar,
+  MapPin
 } from 'lucide-react';
 import {
   Product,
@@ -61,7 +63,8 @@ import {
   BlogPost,
   SEOSettings,
   MediaItem,
-  AdminRole
+  AdminRole,
+  StoreLocation
 } from '../types';
 import {
   getStoredProducts,
@@ -85,7 +88,9 @@ import {
   getStoredMedia,
   saveMedia,
   exportDatabaseBackup,
-  restoreDatabaseBackup
+  restoreDatabaseBackup,
+  getStoredStores,
+  saveStores
 } from '../services/api';
 
 interface AdminPageProps {
@@ -95,6 +100,8 @@ interface AdminPageProps {
   setSettings: React.Dispatch<React.SetStateAction<AdminSettings>>;
   categories?: CategoryItem[];
   setCategories?: React.Dispatch<React.SetStateAction<CategoryItem[]>>;
+  stores?: StoreLocation[];
+  setStores?: React.Dispatch<React.SetStateAction<StoreLocation[]>>;
 }
 
 export const AdminPage: React.FC<AdminPageProps> = ({
@@ -104,6 +111,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   setSettings,
   categories: categoriesProp,
   setCategories: setCategoriesProp,
+  stores: storesProp,
+  setStores: setStoresProp,
 }) => {
   // Authentication & Security State
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -122,6 +131,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     | 'categories'
     | 'orders'
     | 'customers'
+    | 'stores'
     | 'content'
     | 'blogs'
     | 'reviews'
@@ -142,6 +152,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
   const [seoSettings, setSEOSettings] = useState<SEOSettings>(getStoredSEOSettings());
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
+  const [localStores, setLocalStores] = useState<StoreLocation[]>(() => getStoredStores());
+  const stores = storesProp ?? localStores;
 
   // Modals & Interactivity State
   const [showAddProductModal, setShowAddProductModal] = useState(false);
@@ -239,6 +251,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       setBlogPosts(getStoredBlogPosts());
       setSEOSettings(getStoredSEOSettings());
       setMediaItems(getStoredMedia());
+      setLocalStores(getStoredStores());
     };
 
     loadDatasets();
@@ -1177,6 +1190,18 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           >
             <BarChart3 className="w-4 h-4 text-emerald-600" />
             <span>Analytics & Cities</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('stores')}
+            className={`px-4 py-2.5 rounded-xl transition-all flex items-center gap-1.5 ${
+              activeTab === 'stores'
+                ? 'bg-stone-900 text-amber-300 shadow-md font-extrabold'
+                : 'text-stone-700 hover:bg-white/60'
+            }`}
+          >
+            <MapPin className="w-4 h-4 text-amber-700" />
+            <span>Store Locator ({stores.length})</span>
           </button>
 
           <button
@@ -2642,6 +2667,24 @@ export const AdminPage: React.FC<AdminPageProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* STORE LOCATOR MANAGEMENT MODULE */}
+      {activeTab === 'stores' && (
+        <AdminStoreLocatorModule
+          stores={stores}
+          onSaveStores={async (nextStores) => {
+            setLocalStores(nextStores);
+            if (setStoresProp) setStoresProp(nextStores);
+            const saved = await saveStores(nextStores);
+            setLocalStores(saved);
+            if (setStoresProp) setStoresProp(saved);
+            return saved;
+          }}
+          products={products}
+          selectedRole={selectedRole}
+          onAuditLogAdded={(logs) => setAuditLogs(logs)}
+        />
       )}
 
       {/* ADVANCED ADMIN SETTINGS & BRAND CONFIGURATION MODULE */}

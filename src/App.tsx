@@ -18,9 +18,10 @@ import { FAQPage } from './pages/FAQPage';
 import { BlogPage } from './pages/BlogPage';
 import { PoliciesPage } from './pages/PoliciesPage';
 import { AdminPage } from './pages/AdminPage';
+import { StoreLocatorPage } from './pages/StoreLocatorPage';
 
-import { Product, CartItem, CategoryType, Order, AdminSettings, CategoryItem, Review } from './types';
-import { getStoredProducts, getAdminSettings, getWishlistIds, toggleWishlistId, initializeStorage, getStoredCategories, getStoredReviews, applyLiveReviewsToProducts, subscribeToSupabaseRealtime, syncAllFromSupabase } from './services/api';
+import { Product, CartItem, CategoryType, Order, AdminSettings, CategoryItem, Review, StoreLocation } from './types';
+import { getStoredProducts, getAdminSettings, getWishlistIds, toggleWishlistId, initializeStorage, getStoredCategories, getStoredReviews, getStoredStores, applyLiveReviewsToProducts, subscribeToSupabaseRealtime, syncAllFromSupabase } from './services/api';
 import { Search, X } from 'lucide-react';
 
 export function App() {
@@ -52,6 +53,9 @@ export function App() {
 
   const [wishlistIds, setWishlistIds] = useState<string[]>([]);
   const [reviews, setReviews] = useState<Review[]>(() => getStoredReviews());
+  const [stores, setStores] = useState<StoreLocation[]>(() => getStoredStores());
+  const [storeLocatorInitialCity, setStoreLocatorInitialCity] = useState<string>('');
+  const [mapsQuotaExceeded, setMapsQuotaExceeded] = useState(false);
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
   const [quickViewInitialTab, setQuickViewInitialTab] = useState<'benefits' | 'ingredients' | 'howToUse' | 'reviews'>('benefits');
 
@@ -77,6 +81,7 @@ export function App() {
     setWishlistIds(getWishlistIds());
     setSettings(getAdminSettings());
     setReviews(getStoredReviews());
+    setStores(getStoredStores());
 
     const refreshDataState = () => {
       setProducts(getStoredProducts());
@@ -84,7 +89,11 @@ export function App() {
       setWishlistIds(getWishlistIds());
       setSettings(getAdminSettings());
       setReviews(getStoredReviews());
+      setStores(getStoredStores());
     };
+
+    const handleQuotaExceeded = () => setMapsQuotaExceeded(true);
+    window.addEventListener('gmp-quota-exceeded', handleQuotaExceeded);
 
     // Perform background sync from Supabase
     syncAllFromSupabase().then(refreshDataState);
@@ -96,6 +105,7 @@ export function App() {
     const unsubscribeRealtime = subscribeToSupabaseRealtime(refreshDataState);
 
     return () => {
+      window.removeEventListener('gmp-quota-exceeded', handleQuotaExceeded);
       window.removeEventListener('denon_data_updated', refreshDataState);
       window.removeEventListener('denon_categories_updated', refreshDataState);
       window.removeEventListener('storage', refreshDataState);
@@ -196,6 +206,23 @@ export function App() {
 
   return (
     <div className="min-h-screen bg-stone-50 text-stone-900 font-sans flex flex-col justify-between selection:bg-amber-200 selection:text-amber-900">
+      {mapsQuotaExceeded && (
+        <div className="bg-amber-50 border-b border-amber-200 text-amber-900 px-4 py-2.5 text-xs md:text-sm text-center sticky top-0 z-50 shadow-sm">
+          <span>
+            Google Maps Platform quota reached. If you are the app owner, visit{' '}
+            <a
+              href="https://developers.google.com/maps/ai/ai-studio?utm_campaign=gmp_mcp_codeassist_v1_aistudio#quota_exceeded_errors"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline font-semibold text-amber-950 hover:text-amber-800"
+            >
+              maps developer site
+            </a>{' '}
+            for instructions to update your account.
+          </span>
+        </div>
+      )}
+
       {/* Top Header Navbar */}
       <Header
         activeTab={activeTab}
@@ -224,6 +251,11 @@ export function App() {
             categories={categories}
             reviews={reviews}
             onReviewSubmitted={setReviews}
+            stores={stores}
+            onOpenStoreLocator={(city) => {
+              setStoreLocatorInitialCity(city || '');
+              setActiveTab('stores');
+            }}
           />
         )}
 
@@ -264,6 +296,16 @@ export function App() {
 
         {activeTab === 'track-order' && <TrackOrderPage />}
 
+        {activeTab === 'stores' && (
+          <StoreLocatorPage
+            stores={stores}
+            products={productsWithLiveReviews}
+            initialCity={storeLocatorInitialCity}
+            onClearInitialCity={() => setStoreLocatorInitialCity('')}
+            setActiveTab={setActiveTab}
+          />
+        )}
+
         {activeTab === 'account' && (
           <CustomerAccountPage
             products={productsWithLiveReviews}
@@ -274,6 +316,8 @@ export function App() {
             onToggleWishlist={handleToggleWishlist}
             whatsappNumber={settings.whatsappNumber}
             setActiveTab={setActiveTab}
+            stores={stores}
+            onStoresUpdated={setStores}
           />
         )}
 
@@ -295,6 +339,8 @@ export function App() {
             setSettings={setSettings}
             categories={categories}
             setCategories={setCategories}
+            stores={stores}
+            setStores={setStores}
           />
         )}
       </main>

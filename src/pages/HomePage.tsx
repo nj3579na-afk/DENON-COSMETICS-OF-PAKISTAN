@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { ArrowRight, Sparkles, ShieldCheck, Award, Heart, ShoppingBag, Star, Truck, CheckCircle2, ChevronRight, ChevronDown, ChevronUp, Send, MessageSquare } from 'lucide-react';
-import { Product, AdminSettings, CategoryType, CategoryItem, Review } from '../types';
+import { ArrowRight, Sparkles, ShieldCheck, Award, Heart, ShoppingBag, Star, Truck, CheckCircle2, ChevronRight, ChevronDown, ChevronUp, Send, MessageSquare, MapPin } from 'lucide-react';
+import { Product, AdminSettings, CategoryType, CategoryItem, Review, StoreLocation } from '../types';
 import { getStoredCategories, submitCustomerReview } from '../services/api';
 import { ProductCard } from '../components/ProductCard';
 
@@ -18,6 +18,8 @@ interface HomePageProps {
   categories?: CategoryItem[];
   reviews?: Review[];
   onReviewSubmitted?: (updatedReviews: Review[]) => void;
+  stores?: StoreLocation[];
+  onOpenStoreLocator?: (city?: string) => void;
 }
 
 export const HomePage: React.FC<HomePageProps> = ({
@@ -34,6 +36,8 @@ export const HomePage: React.FC<HomePageProps> = ({
   categories,
   reviews = [],
   onReviewSubmitted,
+  stores = [],
+  onOpenStoreLocator,
 }) => {
   const featuredProducts = products.filter((p) => p.isFeatured).slice(0, 4);
   const bestSellers = products.filter((p) => p.isBestSeller).slice(0, 4);
@@ -332,6 +336,58 @@ export const HomePage: React.FC<HomePageProps> = ({
                 Our iconic Denon Pearl and Rice Beauty Creams deliver visible reduction in dark spots, freckles, and dullness within days.
               </p>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Find DENON Near You (Smart Store Locator Section) */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="bg-white rounded-3xl border border-stone-200 p-8 sm:p-10 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+          <div className="space-y-3 max-w-2xl">
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-amber-800">
+              <MapPin className="w-3.5 h-3.5" />
+              <span>FIND DENON NEAR YOU • PAKISTAN</span>
+            </span>
+            <h2 className="font-serif text-2xl sm:text-3xl font-bold text-stone-900">
+              Locate Authorized Pharmacies, Cosmetics Shops & Distributors
+            </h2>
+            <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">
+              Explore our interactive Pakistan Store Locator to find verified DENON COSMETICS outlets in your city, view available products, or get instant Google Maps directions.
+            </p>
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              {['Peshawar', 'Lahore', 'Karachi', 'Islamabad', 'Rawalpindi', 'Quetta', 'Multan', 'Faisalabad'].map((city) => (
+                <button
+                  key={city}
+                  type="button"
+                  onClick={() => (onOpenStoreLocator ? onOpenStoreLocator(city) : setActiveTab('stores'))}
+                  className="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-amber-100 text-stone-800 hover:text-amber-950 text-xs font-bold transition-colors cursor-pointer"
+                >
+                  {city}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row lg:flex-col items-stretch sm:items-center lg:items-end gap-3 shrink-0">
+            <div className="bg-amber-50 border border-amber-200 px-4 py-2.5 rounded-2xl text-center lg:text-right">
+              <span className="block text-[10px] font-bold uppercase tracking-wider text-amber-800">
+                Active Verified Locations
+              </span>
+              <span className="font-serif text-xl font-extrabold text-stone-900">
+                {stores.filter((s) => s.isActive !== false && s.approvalStatus === 'Approved').length}{' '}
+                {stores.filter((s) => s.isActive !== false && s.approvalStatus === 'Approved').length === 1 ? 'Store' : 'Stores'} Live
+              </span>
+            </div>
+            <button
+              id="home-open-store-locator-btn"
+              type="button"
+              onClick={() => (onOpenStoreLocator ? onOpenStoreLocator('') : setActiveTab('stores'))}
+              className="px-6 py-3.5 bg-stone-900 hover:bg-stone-800 text-amber-200 font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <MapPin className="w-4 h-4 text-amber-400" />
+              <span>Find Our Stores</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </section>

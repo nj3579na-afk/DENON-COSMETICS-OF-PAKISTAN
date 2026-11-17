@@ -140,6 +140,11 @@ export const Footer: React.FC<FooterProps> = ({ setActiveTab, settings }) => {
               </button>
             </li>
             <li>
+              <button onClick={() => setActiveTab('stores')} className="hover:text-amber-300 transition-colors">
+                Find Our Stores (Pakistan)
+              </button>
+            </li>
+            <li>
               <button onClick={() => setActiveTab('track-order')} className="hover:text-amber-300 transition-colors">
                 Track Your Order
               </button>

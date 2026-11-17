@@ -1,4 +1,4 @@
-import { Product, Order, Review, AdminSettings, CategoryType, AuditLog, Customer, CategoryItem, BlogPost, SEOSettings, MediaItem, OfficeLocation } from '../types';
+import { Product, Order, Review, AdminSettings, CategoryType, AuditLog, Customer, CategoryItem, BlogPost, SEOSettings, MediaItem, OfficeLocation, StoreLocation } from '../types';
 import { INITIAL_PRODUCTS } from '../data/products';
 import { INITIAL_ADMIN_SETTINGS, INITIAL_BLOG_POSTS, INITIAL_REVIEWS } from '../data/initialData';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
@@ -35,6 +35,7 @@ const INITIAL_MEDIA: MediaItem[] = [
 ];
 
 const INITIAL_ORDERS: Order[] = [];
+const INITIAL_STORES: StoreLocation[] = [];
 
 // In-Memory Global State Cache
 let cachedProducts: Product[] = INITIAL_PRODUCTS;
@@ -51,6 +52,7 @@ let cachedAuditLogs: AuditLog[] = INITIAL_AUDIT_LOGS;
 let cachedBlogPosts: BlogPost[] = INITIAL_BLOG_POSTS;
 let cachedSEO: SEOSettings = INITIAL_SEO;
 let cachedMedia: MediaItem[] = INITIAL_MEDIA;
+let cachedStores: StoreLocation[] = INITIAL_STORES;
 let cachedWishlist: string[] = ['denon-rice-facewash', 'denon-beauty-serum'];
 
 let isInitialized = false;
@@ -113,6 +115,35 @@ function supabaseRowToCategory(row: any): CategoryItem {
   };
 }
 
+function supabaseRowToStore(row: any): StoreLocation {
+  return {
+    id: String(row.id),
+    name: String(row.name || ''),
+    ownerName: String(row.ownerName || row.ownername || ''),
+    businessType: (row.businessType || row.businesstype || 'Cosmetics Shop') as StoreLocation['businessType'],
+    address: String(row.address || ''),
+    city: String(row.city || ''),
+    province: String(row.province || 'Punjab'),
+    phone: String(row.phone || ''),
+    whatsapp: String(row.whatsapp || ''),
+    email: row.email ? String(row.email) : '',
+    photos: Array.isArray(row.photos) ? row.photos.filter(Boolean) : [],
+    availableProducts: Array.isArray(row.availableProducts || row.availableproducts)
+      ? (row.availableProducts || row.availableproducts).filter(Boolean)
+      : [],
+    businessHours: String(row.businessHours || row.businesshours || '10:00 AM - 9:00 PM'),
+    googleMapsUrl: row.googleMapsUrl || row.googlemapsurl || '',
+    latitude: Number(row.latitude ?? 0),
+    longitude: Number(row.longitude ?? 0),
+    isVerified: Boolean(row.isVerified ?? row.isverified),
+    isActive: row.isActive !== false && row.isactive !== false,
+    approvalStatus: (row.approvalStatus || row.approvalstatus || 'Approved') as StoreLocation['approvalStatus'],
+    submittedBy: row.submittedBy || row.submittedby || undefined,
+    createdAt: row.createdAt || row.created_at || new Date().toISOString(),
+    updatedAt: row.updatedAt || row.updated_at || new Date().toISOString(),
+  };
+}
+
 // Supabase Save Helper
 async function saveToSupabase<T>(tableName: string, storeKey: string, data: T[] | T): Promise<void> {
   if (!supabase) {
@@ -169,6 +200,30 @@ async function saveToSupabase<T>(tableName: string, storeKey: string, data: T[] 
           isActive: c.isActive !== false,
           sortOrder: Number(c.sortOrder ?? 1),
         }));
+      } else if (tableName === 'stores') {
+        rowsToUpsert = data.map((s: any) => ({
+          id: String(s.id),
+          name: String(s.name || ''),
+          ownerName: String(s.ownerName || ''),
+          businessType: String(s.businessType || 'Cosmetics Shop'),
+          address: String(s.address || ''),
+          city: String(s.city || ''),
+          province: String(s.province || 'Punjab'),
+          phone: String(s.phone || ''),
+          whatsapp: String(s.whatsapp || ''),
+          email: String(s.email || ''),
+          photos: Array.isArray(s.photos) ? s.photos : [],
+          availableProducts: Array.isArray(s.availableProducts) ? s.availableProducts : [],
+          businessHours: String(s.businessHours || ''),
+          googleMapsUrl: String(s.googleMapsUrl || ''),
+          latitude: Number(s.latitude ?? 0),
+          longitude: Number(s.longitude ?? 0),
+          isVerified: Boolean(s.isVerified),
+          isActive: s.isActive !== false,
+          approvalStatus: String(s.approvalStatus || 'Approved'),
+          submittedBy: s.submittedBy ? String(s.submittedBy) : null,
+          updated_at: new Date().toISOString(),
+        }));
       }
 
       if (rowsToUpsert.length > 0) {
@@ -180,7 +235,7 @@ async function saveToSupabase<T>(tableName: string, storeKey: string, data: T[] 
       }
 
       // Handle deletions for relational tables
-      if (tableName === 'products' || tableName === 'categories') {
+      if (tableName === 'products' || tableName === 'categories' || tableName === 'stores') {
         const { data: currentRows } = await supabase.from(tableName).select('id');
         if (currentRows && currentRows.length > 0) {
           const currentIdsInApp = new Set(data.map((item: any) => String(item.id)));
@@ -231,6 +286,9 @@ async function fetchFromSupabase<T>(tableName: string, storeKey: string): Promis
       if (tableName === 'categories' && Array.isArray(val)) {
         return { data: val.map(supabaseRowToCategory) as unknown as T, success: true };
       }
+      if (tableName === 'stores' && Array.isArray(val)) {
+        return { data: val.map(supabaseRowToStore) as unknown as T, success: true };
+      }
       return { data: val as T, success: true };
     }
 
@@ -242,6 +300,9 @@ async function fetchFromSupabase<T>(tableName: string, storeKey: string): Promis
       }
       if (tableName === 'categories') {
         return { data: data.map(supabaseRowToCategory) as unknown as T, success: true };
+      }
+      if (tableName === 'stores') {
+        return { data: data.map(supabaseRowToStore) as unknown as T, success: true };
       }
       return { data: data as unknown as T, success: true };
     }
@@ -270,6 +331,7 @@ export async function syncAllFromSupabase(): Promise<void> {
       blogsRes,
       seoRes,
       mediaRes,
+      storesRes,
     ] = await Promise.all([
       fetchFromSupabase<CategoryItem[]>('categories', 'categories'),
       fetchFromSupabase<Product[]>('products', 'products'),
@@ -281,6 +343,7 @@ export async function syncAllFromSupabase(): Promise<void> {
       fetchFromSupabase<BlogPost[]>('blog_posts', 'blog_posts'),
       fetchFromSupabase<SEOSettings>('seo_settings', 'seo'),
       fetchFromSupabase<MediaItem[]>('media_items', 'media'),
+      fetchFromSupabase<StoreLocation[]>('stores', 'stores'),
     ]);
 
     let updated = false;
@@ -352,6 +415,11 @@ export async function syncAllFromSupabase(): Promise<void> {
       saveToLocalStorage('denon_media', cachedMedia);
       updated = true;
     }
+    if (storesRes.success && storesRes.data) {
+      cachedStores = storesRes.data;
+      saveToLocalStorage('denon_stores', cachedStores);
+      updated = true;
+    }
 
     if (updated) {
       notifyDataUpdated();
@@ -420,6 +488,9 @@ export function initializeStorage() {
 
       const med = localStorage.getItem('denon_media');
       if (med) cachedMedia = JSON.parse(med);
+
+      const st = localStorage.getItem('denon_stores');
+      if (st) cachedStores = JSON.parse(st);
     } catch (e) {
       console.warn('localStorage read error:', e);
     }
@@ -796,6 +867,85 @@ export function saveMedia(media: MediaItem[]): void {
   saveToSupabase('media_items', 'media', media);
 }
 
+// Smart Store Locator (Pakistan Registered Stores & Distributors - Zero Fake Stores)
+export function getStoredStores(): StoreLocation[] {
+  initializeStorage();
+  return cachedStores;
+}
+
+export async function processAndUploadStorePhotos(stores: StoreLocation[]): Promise<StoreLocation[]> {
+  if (!supabase) return stores;
+  const updated = [...stores];
+  let changed = false;
+
+  for (let i = 0; i < updated.length; i++) {
+    const store = updated[i];
+    if (!Array.isArray(store.photos) || store.photos.length === 0) continue;
+
+    const uploadedPhotos: string[] = [];
+    let storeChanged = false;
+    for (let j = 0; j < store.photos.length; j++) {
+      const photo = store.photos[j];
+      if (photo && photo.startsWith('data:image/')) {
+        const cdnUrl = await uploadImageToSupabase(photo, `store_${store.id}_${j + 1}`);
+        uploadedPhotos.push(cdnUrl);
+        storeChanged = true;
+      } else if (photo) {
+        uploadedPhotos.push(photo);
+      }
+    }
+
+    if (storeChanged) {
+      updated[i] = { ...store, photos: uploadedPhotos };
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    cachedStores = updated;
+    saveToLocalStorage('denon_stores', updated);
+    notifyDataUpdated();
+  }
+  return updated;
+}
+
+export async function saveStores(stores: StoreLocation[]): Promise<StoreLocation[]> {
+  cachedStores = stores;
+  saveToLocalStorage('denon_stores', stores);
+  notifyDataUpdated();
+
+  try {
+    const processed = await processAndUploadStorePhotos(stores);
+    saveToLocalStorage('denon_stores', processed);
+    await saveToSupabase('stores', 'stores', processed);
+    return processed;
+  } catch (err) {
+    console.warn('Supabase store sync notice (saved locally):', err);
+    return stores;
+  }
+}
+
+export async function upsertStore(store: StoreLocation): Promise<StoreLocation[]> {
+  initializeStorage();
+  const exists = cachedStores.some((s) => s.id === store.id);
+  const now = new Date().toISOString();
+  const record: StoreLocation = {
+    ...store,
+    createdAt: store.createdAt || now,
+    updatedAt: now,
+  };
+  const next = exists
+    ? cachedStores.map((s) => (s.id === store.id ? record : s))
+    : [record, ...cachedStores];
+  return saveStores(next);
+}
+
+export async function deleteStore(storeId: string): Promise<StoreLocation[]> {
+  initializeStorage();
+  const next = cachedStores.filter((s) => s.id !== storeId);
+  return saveStores(next);
+}
+
 // Backup & Restore Database State
 export function exportDatabaseBackup(): string {
   initializeStorage();
@@ -812,6 +962,7 @@ export function exportDatabaseBackup(): string {
     blogs: getStoredBlogPosts(),
     seo: getStoredSEOSettings(),
     media: getStoredMedia(),
+    stores: getStoredStores(),
   };
   return JSON.stringify(backup, null, 2);
 }
@@ -829,6 +980,7 @@ export function restoreDatabaseBackup(jsonData: string): boolean {
     if (data.blogs) saveBlogPosts(data.blogs);
     if (data.seo) saveSEOSettings(data.seo);
     if (data.media) saveMedia(data.media);
+    if (data.stores) saveStores(data.stores);
     notifyDataUpdated();
     return true;
   } catch (err) {

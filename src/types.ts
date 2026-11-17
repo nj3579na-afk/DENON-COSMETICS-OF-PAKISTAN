@@ -272,3 +272,38 @@ export interface FAQItem {
   answer: string;
   category: 'Orders & Delivery' | 'COD & Payment' | 'Products & Skincare' | 'Return & Guarantee';
 }
+
+export type StoreBusinessType =
+  | 'Pharmacy'
+  | 'Cosmetics Shop'
+  | 'Retailer'
+  | 'Wholesaler'
+  | 'Distributor';
+
+export type StoreApprovalStatus = 'Approved' | 'Pending' | 'Rejected';
+
+export interface StoreLocation {
+  id: string;
+  name: string;
+  ownerName: string;
+  businessType: StoreBusinessType;
+  address: string;
+  city: string;
+  province: string;
+  phone: string;
+  whatsapp: string;
+  email?: string;
+  photos: string[];
+  availableProducts: string[];
+  businessHours: string;
+  googleMapsUrl?: string;
+  latitude: number;
+  longitude: number;
+  isVerified: boolean;
+  isActive: boolean;
+  approvalStatus: StoreApprovalStatus;
+  submittedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+

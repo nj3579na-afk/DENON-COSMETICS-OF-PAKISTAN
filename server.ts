@@ -14,6 +14,13 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', brand: 'DENON COSMETICS' });
 });
 
+// Provide provisioned Google Maps key to frontend if not set as VITE_ build env
+app.get('/api/maps-config', (req, res) => {
+  res.json({
+    apiKey: process.env.VITE_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || '',
+  });
+});
+
 // Vite & Production Static Serving
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {

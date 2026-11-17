@@ -168,3 +168,45 @@ INSERT INTO public.products (id, name, description, price, "originalPrice", imag
 ('denon-glow-serum', 'Denon 10% Niacinamide + Rice Serum', 'Concentrated brightening serum that shrinks open pores, balances sebum, and locks in luminous moisture all day.', 999, 1450, 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&q=80&w=600', 'Serum', true, 4.9, 84, 'HOT SELLER', true, true, '30 ml'),
 ('denon-hair-removal-spray', 'Denon Painless 4D Hair Removal Spray', 'Revolutionary spray-on hair removal formula with Aloe Vera and Calcium Thioglycolate. Smooth skin in 6 minutes.', 550, 750, 'https://images.unsplash.com/photo-1571781926291-c477ebfd024b?auto=format&fit=crop&q=80&w=600', 'Hair Removal Spray', true, 4.7, 210, 'PAINLESS', true, true, '150 ml')
 ON CONFLICT (id) DO NOTHING;
+
+-- 10. CREATE SMART STORE LOCATOR TABLE (PAKISTAN STORES & DISTRIBUTORS)
+CREATE TABLE IF NOT EXISTS public.stores (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  "ownerName" TEXT NOT NULL,
+  "businessType" TEXT NOT NULL DEFAULT 'Cosmetics Shop',
+  address TEXT NOT NULL,
+  city TEXT NOT NULL,
+  province TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  whatsapp TEXT,
+  email TEXT,
+  photos JSONB DEFAULT '[]'::jsonb,
+  "availableProducts" JSONB DEFAULT '[]'::jsonb,
+  "businessHours" TEXT,
+  "googleMapsUrl" TEXT,
+  latitude DOUBLE PRECISION,
+  longitude DOUBLE PRECISION,
+  "isVerified" BOOLEAN DEFAULT false,
+  "isActive" BOOLEAN DEFAULT true,
+  "approvalStatus" TEXT NOT NULL DEFAULT 'Approved',
+  "submittedBy" TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_stores_city ON public.stores (city);
+CREATE INDEX IF NOT EXISTS idx_stores_province ON public.stores (province);
+CREATE INDEX IF NOT EXISTS idx_stores_business_type ON public.stores ("businessType");
+CREATE INDEX IF NOT EXISTS idx_stores_status ON public.stores ("isActive", "approvalStatus");
+
+ALTER TABLE public.stores ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow public read active stores" ON public.stores;
+CREATE POLICY "Allow public read active stores" ON public.stores
+  FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Allow app manage stores" ON public.stores;
+CREATE POLICY "Allow app manage stores" ON public.stores
+  FOR ALL USING (true) WITH CHECK (true);
+

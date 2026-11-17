@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { User, Heart, Package, LogOut, Phone, MapPin, Mail, Lock, UserPlus, LogIn, CheckCircle2, AlertCircle, Sparkles } from 'lucide-react';
-import { Product, Order, Customer } from '../types';
-import { getStoredOrders, saveCustomers, getStoredCustomers } from '../services/api';
+import { User, Heart, Package, LogOut, Phone, MapPin, Mail, Lock, UserPlus, LogIn, CheckCircle2, AlertCircle, Sparkles, Store, Plus, Edit, ShieldCheck, Clock } from 'lucide-react';
+import { Product, Order, Customer, StoreLocation } from '../types';
+import { getStoredOrders, saveCustomers, getStoredCustomers, getStoredStores, upsertStore } from '../services/api';
 import { ProductCard } from '../components/ProductCard';
+import { StoreFormModal } from '../components/StoreFormModal';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 interface CustomerAccountPageProps {
@@ -14,6 +15,8 @@ interface CustomerAccountPageProps {
   onToggleWishlist: (productId: string) => void;
   whatsappNumber: string;
   setActiveTab: (tab: string) => void;
+  stores?: StoreLocation[];
+  onStoresUpdated?: (next: StoreLocation[]) => void;
 }
 
 export const CustomerAccountPage: React.FC<CustomerAccountPageProps> = ({
@@ -25,8 +28,13 @@ export const CustomerAccountPage: React.FC<CustomerAccountPageProps> = ({
   onToggleWishlist,
   whatsappNumber,
   setActiveTab,
+  stores: storesProp,
+  onStoresUpdated,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'profile' | 'wishlist' | 'orders'>('profile');
+  const [activeSubTab, setActiveSubTab] = useState<'profile' | 'wishlist' | 'orders' | 'distributor'>('profile');
+  const [isStoreModalOpen, setIsStoreModalOpen] = useState(false);
+  const [editingDistributorStore, setEditingDistributorStore] = useState<StoreLocation | null>(null);
+  const [distributorNotice, setDistributorNotice] = useState('');
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
 
   // Customer session state
@@ -320,6 +328,27 @@ export const CustomerAccountPage: React.FC<CustomerAccountPageProps> = ({
     : [];
 
   const wishlistedProducts = products.filter((p) => wishlistIds.includes(p.id));
+  const allStores = storesProp ?? getStoredStores();
+  const distributorStores = currentUser
+    ? allStores.filter(
+        (s) =>
+          (s.submittedBy && s.submittedBy.toLowerCase() === currentUser.email.toLowerCase()) ||
+          (s.email && s.email.toLowerCase() === currentUser.email.toLowerCase())
+      )
+    : [];
+
+  const handleSaveDistributorStore = async (storePayload: StoreLocation) => {
+    const updated = await upsertStore({
+      ...storePayload,
+      approvalStatus: 'Pending',
+      isVerified: false,
+      submittedBy: currentUser?.email || storePayload.submittedBy,
+    });
+    if (onStoresUpdated) onStoresUpdated(updated);
+    setDistributorNotice(
+      `"${storePayload.name}" has been submitted! It will go live on the Pakistan Store Locator once approved by Admin.`
+    );
+  };
 
   if (loading) {
     return (
@@ -587,6 +616,16 @@ export const CustomerAccountPage: React.FC<CustomerAccountPageProps> = ({
           <Package className="w-4 h-4" />
           <span>My Orders ({userOrders.length})</span>
         </button>
+
+        <button
+          onClick={() => setActiveSubTab('distributor')}
+          className={`pb-3 flex items-center gap-2 transition-colors ${
+            activeSubTab === 'distributor' ? 'border-b-2 border-amber-800 text-amber-900 font-bold' : 'text-stone-400 hover:text-stone-700'
+          }`}
+        >
+          <Store className="w-4 h-4" />
+          <span>Distributor Store Portal ({distributorStores.length})</span>
+        </button>
       </div>
 
       {/* Sub-Tab Content */}
@@ -741,6 +780,118 @@ export const CustomerAccountPage: React.FC<CustomerAccountPageProps> = ({
               </div>
             ))
           )}
+        </div>
+      )}
+
+      {activeSubTab === 'distributor' && (
+        <div className="space-y-6">
+          <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <h2 className="font-serif text-lg font-bold text-stone-900 flex items-center gap-2">
+                <Store className="w-5 h-5 text-amber-700" />
+                <span>Distributor & Retail Partner Portal</span>
+              </h2>
+              <p className="text-xs text-stone-500">
+                Register your pharmacy, cosmetics shop, or distribution office for the official DENON Pakistan Store Locator. Admin reviews and approves submissions before they appear publicly.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setEditingDistributorStore(null);
+                setIsStoreModalOpen(true);
+              }}
+              className="px-5 py-2.5 bg-stone-900 hover:bg-stone-800 text-amber-200 rounded-xl text-xs font-bold flex items-center gap-2 shrink-0 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Register New Store</span>
+            </button>
+          </div>
+
+          {distributorNotice && (
+            <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-semibold flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>{distributorNotice}</span>
+            </div>
+          )}
+
+          {distributorStores.length === 0 ? (
+            <div className="bg-white p-12 text-center rounded-3xl border border-dashed border-stone-300 space-y-3">
+              <Store className="w-12 h-12 text-amber-700/60 mx-auto" />
+              <h3 className="font-serif text-lg font-bold text-stone-900">No Stores Submitted Yet</h3>
+              <p className="text-xs text-stone-500 max-w-md mx-auto">
+                Click "Register New Store" to add your shop location, store photos, available DENON products, and contact details.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {distributorStores.map((store) => (
+                <div key={store.id} className="bg-white p-5 rounded-2xl border border-stone-200 shadow-xs space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="font-serif text-base font-bold text-stone-900">{store.name}</h4>
+                        {store.isVerified && (
+                          <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                            <ShieldCheck className="w-3 h-3" /> Verified
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-amber-800 font-semibold">
+                        {store.businessType} • {store.city}, {store.province}
+                      </p>
+                    </div>
+                    <span
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold shrink-0 ${
+                        store.approvalStatus === 'Approved'
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : store.approvalStatus === 'Rejected'
+                            ? 'bg-red-50 text-red-700 border border-red-200'
+                            : 'bg-sky-50 text-sky-700 border border-sky-200'
+                      }`}
+                    >
+                      {store.approvalStatus === 'Approved'
+                        ? 'Approved & Live'
+                        : store.approvalStatus === 'Rejected'
+                          ? 'Rejected'
+                          : 'Pending Admin Approval'}
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-stone-600">{store.address}</p>
+                  <div className="flex items-center justify-between text-[11px] text-stone-500 pt-2 border-t border-stone-100">
+                    <span className="inline-flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5" /> {store.businessHours}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingDistributorStore(store);
+                        setIsStoreModalOpen(true);
+                      }}
+                      className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-900 rounded-lg font-bold flex items-center gap-1 cursor-pointer"
+                    >
+                      <Edit className="w-3.5 h-3.5" />
+                      <span>Edit & Resubmit</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <StoreFormModal
+            isOpen={isStoreModalOpen}
+            onClose={() => {
+              setIsStoreModalOpen(false);
+              setEditingDistributorStore(null);
+            }}
+            onSave={handleSaveDistributorStore}
+            initialStore={editingDistributorStore}
+            products={products}
+            mode="distributor"
+            distributorEmail={currentUser.email}
+          />
         </div>
       )}
     </div>
