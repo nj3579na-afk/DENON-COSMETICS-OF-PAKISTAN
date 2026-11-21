@@ -32,7 +32,6 @@ export const ShopPage: React.FC<ShopPageProps> = ({
   categories,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [maxPrice, setMaxPrice] = useState<number>(2000);
   const [sortBy, setSortBy] = useState<'featured' | 'price-low' | 'price-high' | 'rating' | 'newest'>('featured');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
@@ -51,9 +50,8 @@ export const ShopPage: React.FC<ShopPageProps> = ({
           p.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
           p.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
           p.ingredients.some((ing) => ing.toLowerCase().includes(searchQuery.toLowerCase()));
-        const matchesPrice = p.salePrice <= maxPrice;
 
-        return matchesCategory && matchesSearch && matchesPrice;
+        return matchesCategory && matchesSearch;
       })
       .sort((a, b) => {
         if (sortBy === 'price-low') return a.salePrice - b.salePrice;
@@ -62,7 +60,7 @@ export const ShopPage: React.FC<ShopPageProps> = ({
         if (sortBy === 'newest') return (b.isNewArrival ? 1 : 0) - (a.isNewArrival ? 1 : 0);
         return 0; // featured
       });
-  }, [products, selectedCategory, searchQuery, maxPrice, sortBy]);
+  }, [products, selectedCategory, searchQuery, sortBy]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -86,7 +84,7 @@ export const ShopPage: React.FC<ShopPageProps> = ({
 
       {/* Filter & Controls Bar */}
       <div className="bg-white p-4 rounded-2xl border border-stone-200 shadow-xs space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
           {/* Search Input */}
           <div className="relative md:col-span-2">
             <Search className="w-4 h-4 absolute left-3 top-3 text-stone-400" />
@@ -113,23 +111,6 @@ export const ShopPage: React.FC<ShopPageProps> = ({
               <option value="rating">Highest Rated</option>
               <option value="newest">New Arrivals</option>
             </select>
-          </div>
-
-          {/* Max Price Slider */}
-          <div className="space-y-1">
-            <div className="flex justify-between text-xs font-semibold text-stone-700">
-              <span>Max Price:</span>
-              <span className="text-amber-900 font-bold">PKR {(maxPrice ?? 2000).toLocaleString()}</span>
-            </div>
-            <input
-              type="range"
-              min="200"
-              max="2000"
-              step="50"
-              value={maxPrice}
-              onChange={(e) => setMaxPrice(Number(e.target.value))}
-              className="w-full accent-amber-800 cursor-pointer"
-            />
           </div>
         </div>
 
@@ -159,13 +140,12 @@ export const ShopPage: React.FC<ShopPageProps> = ({
       {filteredProducts.length === 0 ? (
         <div className="bg-white p-12 text-center rounded-3xl border border-stone-200 space-y-4">
           <p className="text-stone-500 text-sm font-medium">
-            No products found matching "{searchQuery}" or selected price limit.
+            No products found matching "{searchQuery}".
           </p>
           <button
             onClick={() => {
               setSearchQuery('');
               setSelectedCategory('All');
-              setMaxPrice(2000);
             }}
             className="px-5 py-2 bg-stone-900 text-amber-200 text-xs font-bold rounded-xl"
           >
