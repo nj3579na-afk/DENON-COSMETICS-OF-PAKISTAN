@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, Star, ShoppingBag, MessageCircle, ShieldCheck, CheckCircle2, Send, MessageSquare } from 'lucide-react';
+import { X, Star, ShoppingBag, MessageCircle, ShieldCheck, CheckCircle2, Send, MessageSquare, Play, Image as ImageIcon } from 'lucide-react';
 import { Product, Review } from '../types';
 import { submitCustomerReview } from '../services/api';
+import { getYouTubeEmbedUrl } from './VideoUploader';
 
 interface QuickViewModalProps {
   product: Product | null;
@@ -32,12 +33,14 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
   const [reviewComment, setReviewComment] = useState('');
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [reviewFeedback, setReviewFeedback] = useState('');
+  const [mediaMode, setMediaMode] = useState<'photo' | 'video'>('photo');
 
   useEffect(() => {
     if (product) {
       setActiveTab(initialTab || 'benefits');
       setQuantity(1);
       setReviewFeedback('');
+      setMediaMode('photo');
     }
   }, [product?.id, initialTab]);
 
@@ -97,17 +100,70 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
         </button>
 
         <div className="grid grid-cols-1 md:grid-cols-2">
-          {/* Image Column */}
-          <div className="bg-stone-100 p-6 flex flex-col justify-between items-center relative">
-            <span className="absolute top-4 left-4 bg-amber-800 text-white text-[10px] font-bold px-2.5 py-1 rounded-md uppercase">
+          {/* Image / Optional Video Column */}
+          <div className="bg-stone-100 p-6 flex flex-col justify-between items-center relative gap-3">
+            <span className="absolute top-4 left-4 z-10 bg-amber-800 text-white text-[10px] font-bold px-2.5 py-1 rounded-md uppercase">
               {product.brand}
             </span>
-            <img
-              src={product.image}
-              alt={product.name}
-              className="w-full max-h-80 object-cover rounded-2xl shadow-md my-auto"
-            />
-            <div className="w-full pt-4 text-center">
+
+            {product.videoUrl && mediaMode === 'video' ? (
+              <div className="w-full h-80 rounded-2xl overflow-hidden shadow-md my-auto bg-black flex items-center justify-center">
+                {getYouTubeEmbedUrl(product.videoUrl) ? (
+                  <iframe
+                    src={getYouTubeEmbedUrl(product.videoUrl)!}
+                    title={`${product.name} Video`}
+                    className="w-full h-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                ) : (
+                  <video
+                    src={product.videoUrl}
+                    controls
+                    autoPlay
+                    playsInline
+                    className="w-full h-full object-contain"
+                  />
+                )}
+              </div>
+            ) : (
+              <img
+                src={product.image}
+                alt={product.name}
+                className="w-full max-h-80 object-cover rounded-2xl shadow-md my-auto"
+              />
+            )}
+
+            {product.videoUrl && (
+              <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-stone-200 shadow-xs">
+                <button
+                  type="button"
+                  onClick={() => setMediaMode('photo')}
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                    mediaMode === 'photo'
+                      ? 'bg-stone-900 text-amber-200'
+                      : 'text-stone-600 hover:bg-stone-100'
+                  }`}
+                >
+                  <ImageIcon className="w-3.5 h-3.5" />
+                  <span>Photo</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMediaMode('video')}
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                    mediaMode === 'video'
+                      ? 'bg-amber-700 text-white'
+                      : 'text-stone-600 hover:bg-stone-100'
+                  }`}
+                >
+                  <Play className="w-3.5 h-3.5" />
+                  <span>Watch Video</span>
+                </button>
+              </div>
+            )}
+
+            <div className="w-full pt-2 text-center">
               <span className="text-xs text-stone-500 font-medium flex items-center justify-center gap-1">
                 <ShieldCheck className="w-4 h-4 text-amber-700" />
                 100% Original & Dermatologically Tested

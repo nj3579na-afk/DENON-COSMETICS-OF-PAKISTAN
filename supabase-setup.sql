@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS public.products (
   price NUMERIC NOT NULL,
   "originalPrice" NUMERIC,
   image TEXT,
+  "videoUrl" TEXT,
   category TEXT NOT NULL,
   inStock BOOLEAN DEFAULT true,
   rating NUMERIC DEFAULT 5.0,
@@ -62,6 +63,8 @@ CREATE TABLE IF NOT EXISTS public.products (
   metaDescription TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS "videoUrl" TEXT;
 
 -- 4. CREATE ORDERS TABLE
 CREATE TABLE IF NOT EXISTS public.orders (

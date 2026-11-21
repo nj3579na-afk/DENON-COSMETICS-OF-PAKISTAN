@@ -11,6 +11,7 @@ export interface Product {
   discountPercent: number;
   image: string;
   images?: string[];
+  videoUrl?: string;
   description: string;
   benefits: string[];
   ingredients: string[];

@@ -117,3 +117,44 @@ export async function uploadImageToSupabase(
     return typeof fileOrBase64 === 'string' ? fileOrBase64 : URL.createObjectURL(fileOrBase64);
   }
 }
+
+/**
+ * Uploads an optional product video File to Supabase Storage.
+ * Returns the public CDN URL (or local blob URL if offline/unconfigured).
+ */
+export async function uploadVideoToSupabase(
+  file: File,
+  fileNamePrefix: string = 'prod_video'
+): Promise<string> {
+  if (!supabase) {
+    console.warn('Supabase client not available for video upload.');
+    return URL.createObjectURL(file);
+  }
+
+  try {
+    await ensureBucketExists('denon-images');
+
+    const bucketName = 'denon-images';
+    const rawExt = file.name.split('.').pop()?.toLowerCase() || 'mp4';
+    const extension = rawExt.replace(/[^a-z0-9]/g, '') || 'mp4';
+    const cleanPrefix = (fileNamePrefix || 'prod_video').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const filePath = `videos/${cleanPrefix}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${extension}`;
+
+    const { data, error } = await supabase.storage.from(bucketName).upload(filePath, file, {
+      contentType: file.type || `video/${extension}`,
+      cacheControl: '3600',
+      upsert: true,
+    });
+
+    if (error) {
+      console.warn('Supabase video upload notice:', error.message);
+      return URL.createObjectURL(file);
+    }
+
+    const { data: publicUrlData } = supabase.storage.from(bucketName).getPublicUrl(data.path);
+    return publicUrlData.publicUrl;
+  } catch (err) {
+    console.error('Error uploading video to Supabase Storage:', err);
+    return URL.createObjectURL(file);
+  }
+}

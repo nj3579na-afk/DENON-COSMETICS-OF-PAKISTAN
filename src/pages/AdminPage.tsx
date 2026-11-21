@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AdminSettingsModule } from '../components/AdminSettingsModule';
 import { AdminStoreLocatorModule } from '../components/AdminStoreLocatorModule';
 import { ImageUploader } from '../components/ImageUploader';
+import { VideoUploader } from '../components/VideoUploader';
 import {
   Lock,
   ShieldCheck,
@@ -179,6 +180,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [pSale, setPSale] = useState(499);
   const [pStock, setPStock] = useState(100);
   const [pImage, setPImage] = useState('https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&q=80&w=800');
+  const [pVideoUrl, setPVideoUrl] = useState('');
   const [pDesc, setPDesc] = useState('');
   const [pIngredients, setPIngredients] = useState('Rice Water, Niacinamide, Vitamin E');
   const [pBenefits, setPBenefits] = useState('Deep hydration, Spot reduction, Radiant glow');
@@ -367,6 +369,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               salePrice: Number(pSale),
               discountPercent,
               image: pImage,
+              videoUrl: pVideoUrl.trim() || undefined,
               description: pDesc || 'Export quality beauty product by Denon Cosmetics.',
               ingredients: ingArray,
               benefits: benArray,
@@ -393,6 +396,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           salePrice: Number(pSale),
           discountPercent,
           image: pImage,
+          videoUrl: pVideoUrl.trim() || undefined,
           description: pDesc || 'Export quality beauty product by Denon Cosmetics.',
           benefits: benArray,
           ingredients: ingArray,
@@ -495,6 +499,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     setPSale(p.salePrice);
     setPStock(p.stockCount);
     setPImage(p.image);
+    setPVideoUrl(p.videoUrl || '');
     setPDesc(p.description);
     setPIngredients(p.ingredients ? p.ingredients.join(', ') : '');
     setPBenefits(p.benefits ? p.benefits.join(', ') : '');
@@ -1408,6 +1413,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 setPSale(499);
                 setPStock(100);
                 setPImage('https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&q=80&w=800');
+                setPVideoUrl('');
                 setPDesc('');
                 setPIngredients('Rice Water, Niacinamide, Vitamin E');
                 setPBenefits('Deep hydration, Spot reduction, Radiant glow');
@@ -2884,6 +2890,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 onChange={(val) => setPImage(val)}
                 helperText="Upload or drag a high-resolution product photo directly from your computer, phone gallery, or device file manager."
                 previewHeightClass="h-56"
+              />
+
+              {/* OPTIONAL PRODUCT VIDEO UPLOAD FIELD */}
+              <VideoUploader
+                label="Product Video (Optional)"
+                value={pVideoUrl}
+                onChange={(val) => setPVideoUrl(val)}
               />
 
               <div>

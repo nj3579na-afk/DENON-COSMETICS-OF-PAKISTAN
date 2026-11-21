@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShoppingBag, Heart, Eye, MessageCircle, Star, Sparkles, CheckCircle } from 'lucide-react';
+import { ShoppingBag, Heart, Eye, MessageCircle, Star, Sparkles, CheckCircle, Play } from 'lucide-react';
 import { Product } from '../types';
 
 interface ProductCardProps {
@@ -46,6 +46,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         {product.isNewArrival && (
           <span className="bg-emerald-700 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md shadow-xs">
             NEW
+          </span>
+        )}
+        {product.videoUrl && (
+          <span className="bg-stone-900/90 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md shadow-xs inline-flex items-center gap-1">
+            <Play className="w-2.5 h-2.5 fill-amber-300 text-amber-300" />
+            VIDEO
           </span>
         )}
       </div>

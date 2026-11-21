@@ -86,6 +86,7 @@ function supabaseRowToProduct(row: any): Product {
     discountPercent: Number(row.discountPercent ?? 0),
     image: row.image || 'https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&q=80&w=400',
     images: Array.isArray(row.images) ? row.images : [],
+    videoUrl: row.videoUrl || row.videourl || '',
     description: row.description || '',
     benefits: Array.isArray(row.benefits) ? row.benefits : [],
     ingredients: Array.isArray(row.ingredients) ? row.ingredients : [],
