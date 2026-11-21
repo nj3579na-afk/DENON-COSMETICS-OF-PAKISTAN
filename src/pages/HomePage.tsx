@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowRight, Sparkles, ShieldCheck, Award, Heart, ShoppingBag, Star, Truck, CheckCircle2, ChevronRight, ChevronDown, ChevronUp, Send, MessageSquare, MapPin } from 'lucide-react';
 import { Product, AdminSettings, CategoryType, CategoryItem, Review, StoreLocation } from '../types';
 import { getStoredCategories, submitCustomerReview } from '../services/api';
 import { ProductCard } from '../components/ProductCard';
+import { getYouTubeEmbedUrl } from '../components/VideoUploader';
+
+const DEFAULT_HERO_IMAGE = '/assets/aistudio/file_00000000ee1c82078dbe50efdb247c23_bd748c5f.png';
 
 interface HomePageProps {
   products: Product[];
@@ -56,6 +59,28 @@ export const HomePage: React.FC<HomePageProps> = ({
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [reviewSuccess, setReviewSuccess] = useState('');
   const [showAllReviews, setShowAllReviews] = useState(false);
+
+  // Hero Media (Multi-image auto slideshow every 2-3s or optional short video)
+  const configuredHeroImages = (settings.heroImages || []).map((img) => img.trim()).filter(Boolean);
+  const heroImages = configuredHeroImages.length > 0 ? configuredHeroImages : [DEFAULT_HERO_IMAGE];
+  const heroVideoUrl = (settings.heroVideoUrl || '').trim();
+  const shouldShowHeroVideo = Boolean(heroVideoUrl) && settings.heroMediaType === 'video';
+  const heroYouTubeEmbed = shouldShowHeroVideo ? getYouTubeEmbedUrl(heroVideoUrl) : null;
+  const heroSlideIntervalMs = Math.max(1500, Math.min(10000, Number(settings.heroSlideIntervalMs) || 2500));
+
+  const [heroSlideIndex, setHeroSlideIndex] = useState(0);
+
+  useEffect(() => {
+    setHeroSlideIndex((prev) => (prev >= heroImages.length ? 0 : prev));
+  }, [heroImages.length]);
+
+  useEffect(() => {
+    if (shouldShowHeroVideo || heroImages.length <= 1) return;
+    const timer = window.setInterval(() => {
+      setHeroSlideIndex((prev) => (prev + 1) % heroImages.length);
+    }, heroSlideIntervalMs);
+    return () => window.clearInterval(timer);
+  }, [shouldShowHeroVideo, heroImages.length, heroSlideIntervalMs]);
 
   const liveReviews = reviews.filter((r) => r.status !== 'Rejected');
   const filteredLiveReviews = liveReviews.filter((r) => {
@@ -119,13 +144,40 @@ export const HomePage: React.FC<HomePageProps> = ({
       <section className="relative bg-stone-900 text-stone-100 overflow-hidden min-h-[520px] flex items-center border-b border-amber-900/30">
         <div className="absolute inset-0 z-0 opacity-30 bg-[radial-gradient(#d97706_1px,transparent_1px)] [background-size:16px_16px]" />
         
-        {/* Background Image Accent */}
-        <div className="absolute right-0 top-0 bottom-0 w-full lg:w-3/5 opacity-25 lg:opacity-45 overflow-hidden">
-          <img
-            src="/assets/aistudio/file_00000000ee1c82078dbe50efdb247c23_bd748c5f.png"
-            alt="Denon Cosmetics Products"
-            className="w-full h-full object-cover object-center"
-          />
+        {/* Background Image / Video Accent */}
+        <div className="absolute right-0 top-0 bottom-0 w-full lg:w-3/5 opacity-25 lg:opacity-45 overflow-hidden pointer-events-none">
+          {shouldShowHeroVideo ? (
+            heroYouTubeEmbed ? (
+              <iframe
+                src={`${heroYouTubeEmbed}?autoplay=1&mute=1&loop=1&controls=0&playsinline=1&rel=0&playlist=${heroYouTubeEmbed.split('/').pop() || ''}`}
+                title="Denon Cosmetics Hero Video"
+                className="w-full h-full scale-110 pointer-events-none"
+                allow="autoplay; encrypted-media"
+              />
+            ) : (
+              <video
+                key={heroVideoUrl}
+                src={heroVideoUrl}
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="auto"
+                className="w-full h-full object-cover object-center"
+              />
+            )
+          ) : (
+            heroImages.map((imgUrl, idx) => (
+              <img
+                key={`${imgUrl}-${idx}`}
+                src={imgUrl}
+                alt={`Denon Cosmetics Hero ${idx + 1}`}
+                className={`absolute inset-0 w-full h-full object-cover object-center transition-opacity duration-700 ease-in-out ${
+                  idx === heroSlideIndex % heroImages.length ? 'opacity-100' : 'opacity-0'
+                }`}
+              />
+            ))
+          )}
           <div className="absolute inset-0 bg-gradient-to-r from-stone-900 via-stone-900/80 to-stone-900/35" />
           <div className="absolute inset-0 bg-stone-900/25" />
         </div>

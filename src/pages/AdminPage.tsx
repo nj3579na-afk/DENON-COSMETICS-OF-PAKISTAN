@@ -3,6 +3,7 @@ import { AdminSettingsModule } from '../components/AdminSettingsModule';
 import { AdminStoreLocatorModule } from '../components/AdminStoreLocatorModule';
 import { ImageUploader } from '../components/ImageUploader';
 import { VideoUploader } from '../components/VideoUploader';
+import { uploadImageToSupabase } from '../lib/supabase';
 import {
   Lock,
   ShieldCheck,
@@ -50,7 +51,12 @@ import {
   ToggleRight,
   User,
   Calendar,
-  MapPin
+  MapPin,
+  Image as ImageIcon,
+  Video,
+  ArrowLeft,
+  ArrowRight,
+  Link2
 } from 'lucide-react';
 import {
   Product,
@@ -237,6 +243,47 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
   // Backup file state
   const [backupRestoreText, setBackupRestoreText] = useState('');
+
+  // Hero Media Management State
+  const DEFAULT_HERO_IMAGE = '/assets/aistudio/file_00000000ee1c82078dbe50efdb247c23_bd748c5f.png';
+  const [heroImageUrlInput, setHeroImageUrlInput] = useState('');
+  const [isUploadingHeroImages, setIsUploadingHeroImages] = useState(false);
+  const [heroSaveSuccess, setHeroSaveSuccess] = useState(false);
+
+  const persistHeroSettings = (nextSettings: AdminSettings) => {
+    setSettings(nextSettings);
+    saveAdminSettings(nextSettings);
+    setHeroSaveSuccess(true);
+    window.setTimeout(() => setHeroSaveSuccess(false), 3000);
+  };
+
+  const handleHeroFilesUpload = async (fileList: FileList | null) => {
+    if (!fileList || fileList.length === 0) return;
+    const files: File[] = Array.from(fileList).filter((f) => f.type.startsWith('image/'));
+    if (files.length === 0) return;
+
+    setIsUploadingHeroImages(true);
+    try {
+      const uploadedUrls: string[] = [];
+      for (const file of files) {
+        const url = await uploadImageToSupabase(file, 'hero_banner');
+        if (url) uploadedUrls.push(url);
+      }
+      if (uploadedUrls.length > 0) {
+        const existing = (settings.heroImages && settings.heroImages.length > 0)
+          ? settings.heroImages.filter(Boolean)
+          : [DEFAULT_HERO_IMAGE];
+        const nextImages = [...existing, ...uploadedUrls];
+        persistHeroSettings({
+          ...settings,
+          heroImages: nextImages,
+          heroMediaType: 'images',
+        });
+      }
+    } finally {
+      setIsUploadingHeroImages(false);
+    }
+  };
 
   // Load datasets on mount & keep synced live on data updates
   useEffect(() => {
@@ -1134,7 +1181,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
             }`}
           >
             <Globe className="w-4 h-4" />
-            <span>Brand Content</span>
+            <span>Brand Content & Hero</span>
           </button>
 
           <button
@@ -1792,86 +1839,346 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       )}
 
       {/* BRAND CONTENT MANAGEMENT TAB */}
-      {activeTab === 'content' && (
-        <div className="glass-panel p-8 rounded-3xl border border-white/70 space-y-6 max-w-3xl animate-fade-in">
-          <h2 className="font-serif text-xl font-bold text-stone-900">Website Content & Brand Customization</h2>
-          <p className="text-xs text-stone-500">
-            Changes made here automatically apply across the entire Denon Cosmetics storefront.
-          </p>
+      {activeTab === 'content' && (() => {
+        const activeHeroImages =
+          settings.heroImages && settings.heroImages.length > 0
+            ? settings.heroImages.filter(Boolean)
+            : [DEFAULT_HERO_IMAGE];
+        const activeHeroMode: 'images' | 'video' =
+          settings.heroMediaType === 'video' && Boolean((settings.heroVideoUrl || '').trim())
+            ? 'video'
+            : 'images';
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-semibold">
+        return (
+          <div className="glass-panel p-6 sm:p-8 rounded-3xl border border-white/70 space-y-8 max-w-4xl animate-fade-in">
             <div>
-              <label className="block text-stone-700 mb-1 font-bold">Brand Name</label>
-              <input
-                type="text"
-                value={settings.brandName || ''}
-                onChange={(e) => setSettings({ ...settings, brandName: e.target.value })}
-                className="w-full p-2.5 glass-input rounded-xl"
-              />
+              <h2 className="font-serif text-xl font-bold text-stone-900">Website Content, Hero Media & Brand Customization</h2>
+              <p className="text-xs text-stone-500 mt-1">
+                Changes made here automatically apply across the entire Denon Cosmetics storefront.
+              </p>
             </div>
 
-            <div>
-              <label className="block text-stone-700 mb-1 font-bold">Website Title</label>
-              <input
-                type="text"
-                value={settings.websiteTitle || ''}
-                onChange={(e) => setSettings({ ...settings, websiteTitle: e.target.value })}
-                className="w-full p-2.5 glass-input rounded-xl"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-semibold">
+              <div>
+                <label className="block text-stone-700 mb-1 font-bold">Brand Name</label>
+                <input
+                  type="text"
+                  value={settings.brandName || ''}
+                  onChange={(e) => setSettings({ ...settings, brandName: e.target.value })}
+                  className="w-full p-2.5 glass-input rounded-xl"
+                />
+              </div>
+
+              <div>
+                <label className="block text-stone-700 mb-1 font-bold">Website Title</label>
+                <input
+                  type="text"
+                  value={settings.websiteTitle || ''}
+                  onChange={(e) => setSettings({ ...settings, websiteTitle: e.target.value })}
+                  className="w-full p-2.5 glass-input rounded-xl"
+                />
+              </div>
+
+              <div>
+                <label className="block text-stone-700 mb-1 font-bold">Hero Banner Title</label>
+                <input
+                  type="text"
+                  value={settings.bannerTitle}
+                  onChange={(e) => setSettings({ ...settings, bannerTitle: e.target.value })}
+                  className="w-full p-2.5 glass-input rounded-xl"
+                />
+              </div>
+
+              <div>
+                <label className="block text-stone-700 mb-1 font-bold">Hero Banner Subtitle</label>
+                <input
+                  type="text"
+                  value={settings.bannerSubtitle}
+                  onChange={(e) => setSettings({ ...settings, bannerSubtitle: e.target.value })}
+                  className="w-full p-2.5 glass-input rounded-xl"
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-stone-700 mb-1 font-bold">Top Announcement Bar Text</label>
+                <input
+                  type="text"
+                  value={settings.announcementText || ''}
+                  onChange={(e) => setSettings({ ...settings, announcementText: e.target.value })}
+                  className="w-full p-2.5 glass-input rounded-xl"
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-stone-700 mb-1 font-bold">Footer Copyright Text</label>
+                <input
+                  type="text"
+                  value={settings.footerText || ''}
+                  onChange={(e) => setSettings({ ...settings, footerText: e.target.value })}
+                  className="w-full p-2.5 glass-input rounded-xl"
+                />
+              </div>
             </div>
 
-            <div>
-              <label className="block text-stone-700 mb-1 font-bold">Hero Banner Title</label>
-              <input
-                type="text"
-                value={settings.bannerTitle}
-                onChange={(e) => setSettings({ ...settings, bannerTitle: e.target.value })}
-                className="w-full p-2.5 glass-input rounded-xl"
-              />
+            {/* HERO SECTION BACKGROUND MEDIA MANAGER */}
+            <div className="border-t border-stone-200/80 pt-6 space-y-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="font-serif text-lg font-bold text-stone-900 flex items-center gap-2">
+                    <ImageIcon className="w-5 h-5 text-amber-700" />
+                    <span>Hero Section Background Media (Photos Slideshow &amp; Short Video)</span>
+                  </h3>
+                  <p className="text-xs text-stone-500 mt-0.5">
+                    Upload 1 or multiple pictures (they automatically rotate every 2–3 seconds on the website) or set a short background video.
+                  </p>
+                </div>
+
+                {/* Display Mode Switcher */}
+                <div className="inline-flex p-1 bg-stone-100 rounded-xl border border-stone-200 text-xs font-bold">
+                  <button
+                    type="button"
+                    onClick={() => persistHeroSettings({ ...settings, heroMediaType: 'images' })}
+                    className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
+                      activeHeroMode === 'images'
+                        ? 'bg-stone-900 text-amber-200 shadow-xs'
+                        : 'text-stone-600 hover:text-stone-900'
+                    }`}
+                  >
+                    <ImageIcon className="w-3.5 h-3.5" />
+                    <span>Pictures ({activeHeroImages.length})</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if ((settings.heroVideoUrl || '').trim()) {
+                        persistHeroSettings({ ...settings, heroMediaType: 'video' });
+                      }
+                    }}
+                    disabled={!(settings.heroVideoUrl || '').trim()}
+                    className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed ${
+                      activeHeroMode === 'video'
+                        ? 'bg-stone-900 text-amber-200 shadow-xs'
+                        : 'text-stone-600 hover:text-stone-900'
+                    }`}
+                  >
+                    <Video className="w-3.5 h-3.5" />
+                    <span>Short Video</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Slideshow Pictures Management */}
+              <div className="bg-white/80 border border-stone-200 rounded-2xl p-5 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h4 className="text-xs font-extrabold uppercase tracking-wider text-stone-800">
+                      Hero Pictures Slideshow ({activeHeroImages.length} {activeHeroImages.length === 1 ? 'Picture' : 'Pictures'})
+                    </h4>
+                    <p className="text-[11px] text-stone-500">
+                      Add multiple pictures to auto-switch smoothly every few seconds when visitors open the website.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <label className="text-[11px] font-bold text-stone-700">Auto-Switch Speed:</label>
+                    <select
+                      value={settings.heroSlideIntervalMs || 2500}
+                      onChange={(e) =>
+                        persistHeroSettings({
+                          ...settings,
+                          heroSlideIntervalMs: Number(e.target.value),
+                        })
+                      }
+                      className="px-2.5 py-1.5 bg-stone-50 border border-stone-300 rounded-xl text-xs font-bold text-stone-800 focus:outline-hidden"
+                    >
+                      <option value={2000}>Every 2 Seconds</option>
+                      <option value={2500}>Every 2.5 Seconds (Default)</option>
+                      <option value={3000}>Every 3 Seconds</option>
+                      <option value={4000}>Every 4 Seconds</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Image Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  {activeHeroImages.map((imgUrl, idx) => (
+                    <div
+                      key={`${imgUrl}-${idx}`}
+                      className="group relative rounded-2xl border border-stone-200 bg-stone-900 overflow-hidden shadow-xs"
+                    >
+                      <div className="aspect-video w-full overflow-hidden bg-stone-900">
+                        <img
+                          src={imgUrl}
+                          alt={`Hero Slide ${idx + 1}`}
+                          className="w-full h-full object-cover object-center opacity-85 group-hover:opacity-100 transition-opacity"
+                        />
+                      </div>
+
+                      <div className="p-2 bg-white border-t border-stone-200 flex items-center justify-between gap-1">
+                        <span className="text-[11px] font-bold text-stone-700 px-1.5 py-0.5 rounded-md bg-amber-50 border border-amber-200">
+                          Slide #{idx + 1}
+                        </span>
+
+                        <div className="flex items-center gap-1">
+                          {idx > 0 && (
+                            <button
+                              type="button"
+                              title="Move Left"
+                              onClick={() => {
+                                const copy = [...activeHeroImages];
+                                [copy[idx - 1], copy[idx]] = [copy[idx], copy[idx - 1]];
+                                persistHeroSettings({ ...settings, heroImages: copy, heroMediaType: 'images' });
+                              }}
+                              className="p-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 cursor-pointer"
+                            >
+                              <ArrowLeft className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          {idx < activeHeroImages.length - 1 && (
+                            <button
+                              type="button"
+                              title="Move Right"
+                              onClick={() => {
+                                const copy = [...activeHeroImages];
+                                [copy[idx + 1], copy[idx]] = [copy[idx], copy[idx + 1]];
+                                persistHeroSettings({ ...settings, heroImages: copy, heroMediaType: 'images' });
+                              }}
+                              className="p-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 cursor-pointer"
+                            >
+                              <ArrowRight className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            title="Remove Picture"
+                            onClick={() => {
+                              const remaining = activeHeroImages.filter((_, i) => i !== idx);
+                              persistHeroSettings({
+                                ...settings,
+                                heroImages: remaining.length > 0 ? remaining : [DEFAULT_HERO_IMAGE],
+                                heroMediaType: 'images',
+                              });
+                            }}
+                            className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Add More Pictures Tile */}
+                  <label className="aspect-video sm:aspect-auto min-h-[140px] border-2 border-dashed border-stone-300 hover:border-amber-700 hover:bg-amber-50/40 rounded-2xl flex flex-col items-center justify-center p-4 text-center cursor-pointer transition-all">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={(e) => {
+                        handleHeroFilesUpload(e.target.files);
+                        e.target.value = '';
+                      }}
+                      className="hidden"
+                    />
+                    <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-900 flex items-center justify-center mb-2">
+                      {isUploadingHeroImages ? (
+                        <RefreshCw className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <Plus className="w-5 h-5" />
+                      )}
+                    </div>
+                    <span className="text-xs font-bold text-stone-800">
+                      {isUploadingHeroImages ? 'Uploading Pictures...' : 'Upload 1 or More Pictures'}
+                    </span>
+                    <span className="text-[11px] text-stone-500 mt-0.5">
+                      PNG, JPG, WebP (multi-select supported)
+                    </span>
+                  </label>
+                </div>
+
+                {/* Paste Image URL & Reset Default */}
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <div className="relative flex-1 min-w-[220px]">
+                    <Link2 className="w-3.5 h-3.5 text-stone-400 absolute left-3 top-2.5" />
+                    <input
+                      type="url"
+                      placeholder="Or paste Hero Image URL (https://...)"
+                      value={heroImageUrlInput}
+                      onChange={(e) => setHeroImageUrlInput(e.target.value)}
+                      className="w-full pl-8 pr-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs font-medium focus:outline-hidden focus:ring-1 focus:ring-amber-700"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const clean = heroImageUrlInput.trim();
+                      if (!clean) return;
+                      persistHeroSettings({
+                        ...settings,
+                        heroImages: [...activeHeroImages, clean],
+                        heroMediaType: 'images',
+                      });
+                      setHeroImageUrlInput('');
+                    }}
+                    className="px-3.5 py-2 bg-stone-200 hover:bg-stone-300 text-stone-900 text-xs font-bold rounded-xl cursor-pointer"
+                  >
+                    + Add Image URL
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      persistHeroSettings({
+                        ...settings,
+                        heroImages: [DEFAULT_HERO_IMAGE],
+                        heroMediaType: 'images',
+                      });
+                    }}
+                    className="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-xs font-bold rounded-xl cursor-pointer"
+                  >
+                    Restore Default Banner
+                  </button>
+                </div>
+              </div>
+
+              {/* Optional Short Hero Video */}
+              <div className="bg-white/80 border border-stone-200 rounded-2xl p-5">
+                <VideoUploader
+                  label="Hero Section Short Video (Optional)"
+                  value={settings.heroVideoUrl || ''}
+                  onChange={(val) => {
+                    persistHeroSettings({
+                      ...settings,
+                      heroVideoUrl: val,
+                      heroMediaType: val ? 'video' : 'images',
+                    });
+                  }}
+                  helperText="Optional: Upload a short MP4, WebM, or MOV video (max 50MB) or paste a video / YouTube link to play subtly in the Hero background instead of the picture slideshow."
+                />
+              </div>
             </div>
 
-            <div>
-              <label className="block text-stone-700 mb-1 font-bold">Hero Banner Subtitle</label>
-              <input
-                type="text"
-                value={settings.bannerSubtitle}
-                onChange={(e) => setSettings({ ...settings, bannerSubtitle: e.target.value })}
-                className="w-full p-2.5 glass-input rounded-xl"
-              />
-            </div>
+            <div className="flex flex-wrap items-center gap-4">
+              <button
+                onClick={() => {
+                  saveAdminSettings(settings);
+                  setHeroSaveSuccess(true);
+                  window.setTimeout(() => setHeroSaveSuccess(false), 3500);
+                }}
+                className="px-6 py-3 bg-stone-900 text-amber-200 text-xs font-bold rounded-xl shadow-md hover:bg-stone-800 cursor-pointer"
+              >
+                Save Brand Content &amp; Hero Media
+              </button>
 
-            <div className="sm:col-span-2">
-              <label className="block text-stone-700 mb-1 font-bold">Top Announcement Bar Text</label>
-              <input
-                type="text"
-                value={settings.announcementText || ''}
-                onChange={(e) => setSettings({ ...settings, announcementText: e.target.value })}
-                className="w-full p-2.5 glass-input rounded-xl"
-              />
-            </div>
-
-            <div className="sm:col-span-2">
-              <label className="block text-stone-700 mb-1 font-bold">Footer Copyright Text</label>
-              <input
-                type="text"
-                value={settings.footerText || ''}
-                onChange={(e) => setSettings({ ...settings, footerText: e.target.value })}
-                className="w-full p-2.5 glass-input rounded-xl"
-              />
+              {heroSaveSuccess && (
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-2 rounded-xl">
+                  <CheckCircle2 className="w-4 h-4" />
+                  Saved &amp; live on website Hero Section!
+                </span>
+              )}
             </div>
           </div>
-
-          <button
-            onClick={() => {
-              saveAdminSettings(settings);
-              alert('Brand Content Updated successfully!');
-            }}
-            className="px-6 py-3 bg-stone-900 text-amber-200 text-xs font-bold rounded-xl shadow-md hover:bg-stone-800"
-          >
-            Save Brand Content
-          </button>
-        </div>
-      )}
+        );
+      })()}
 
       {/* BLOGS MANAGEMENT TAB */}
       {activeTab === 'blogs' && (() => {

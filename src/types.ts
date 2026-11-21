@@ -210,6 +210,10 @@ export interface AdminSettings {
   standardShippingFee: number;
   bannerTitle: string;
   bannerSubtitle: string;
+  heroImages?: string[];
+  heroVideoUrl?: string;
+  heroMediaType?: 'images' | 'video';
+  heroSlideIntervalMs?: number;
   announcementText?: string;
   footerText?: string;
   maintenanceMode?: boolean;
